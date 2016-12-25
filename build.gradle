@@ -1,0 +1,103 @@
+// ##### plugins, project meta
+
+buildscript {
+  repositories {
+    maven {
+      url 'https://plugins.gradle.org/m2/'
+    }
+  }
+
+  dependencies {
+    classpath "gradle.plugin.nl.javadude.gradle.plugins:license-gradle-plugin:0.13.1"
+  }
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'signing'
+apply plugin: 'com.github.hierynomus.license'
+
+group = 'me.scarlet'
+version = 1.0
+
+// ##### dependencies
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+dependencies {
+  compile 'org.luaj:luaj-jse:+'
+  testCompile 'junit:junit:4.12'
+}
+
+// ##### tasks
+
+task jdocJar(type: Jar, dependsOn: javadoc) {
+  classifier = 'javadoc'
+  from 'build/docs/javadoc'
+}
+
+task sourceJar(type: Jar) {
+  from sourceSets.main.allSource
+  classifier = 'sources'
+}
+
+// ##### configs
+
+license {
+  ext.year = Calendar.getInstance().get(Calendar.YEAR)
+  ext.name = 'Tellerva, Marc Lawrence G.'
+}
+
+test {
+  testLogging.showStandardStreams = true
+}
+
+artifacts {
+  archives jar
+
+  archives jdocJar
+  archives sourceJar
+}
+
+signing {
+  sign configurations.archives
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment {
+        MavenDeployment deployment -> signing.signPom(deployment)
+      }
+
+      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+        authentication(userName: sonaUser, password: sonaPass)
+      }
+
+      pom.project {
+        name 'LuaMesh'
+        packaging 'jar'
+        description 'Use LuaJ to mesh your Java objects as they get passed to Lua.'
+        url 'https://github.com/Xemiru/LuaMesh'
+
+        licenses {
+          license {
+            name 'The MIT License'
+            url 'https://opensource.org/licenses/MIT'
+            distribution 'repo'
+          }
+        }
+
+        developers {
+          developer {
+            id 'xemiru'
+            name 'Marc Tellerva'
+          }
+        }
+      }
+    }
+  }
+}
