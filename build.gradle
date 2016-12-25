@@ -17,7 +17,8 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 apply plugin: 'com.github.hierynomus.license'
 
-group = 'me.scarlet'
+group = 'com.github.xemiru'
+archivesBaseName = 'luamesh'
 version = 1.0
 
 // ##### dependencies
