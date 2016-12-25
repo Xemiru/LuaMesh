@@ -19,7 +19,7 @@ apply plugin: 'com.github.hierynomus.license'
 
 group = 'com.github.xemiru'
 archivesBaseName = 'luamesh'
-version = 1.0
+version = '1.0'
 
 // ##### dependencies
 
@@ -29,7 +29,7 @@ repositories {
 }
 
 dependencies {
-  compile 'org.luaj:luaj-jse:+'
+  compile 'org.luaj:luaj-jse:3.0.1'
   testCompile 'junit:junit:4.12'
 }
 
@@ -71,7 +71,7 @@ uploadArchives {
         MavenDeployment deployment -> signing.signPom(deployment)
       }
 
-      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
         authentication(userName: sonaUser, password: sonaPass)
       }
 
@@ -87,6 +87,12 @@ uploadArchives {
             url 'https://opensource.org/licenses/MIT'
             distribution 'repo'
           }
+        }
+
+        scm {
+          url 'git@github.com:Xemiru/LuaMesh.git'
+          connection 'git@github.com:Xemiru/LuaMesh.git'
+          developerConnection 'git@github.com:Xemiru/LuaMesh.git'
         }
 
         developers {
