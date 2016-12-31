@@ -117,7 +117,12 @@ public class LuaMeta {
     private LuaTable metatable;
     private String name;
 
-    public LuaMeta(LuaType annot, Class<?> type) {
+    public LuaMeta(LuaType rannot, Class<?> type) {
+        LuaType annot = rannot;
+        if(type.getDeclaredAnnotation(LuaType.class) != null) {
+            annot = type.getDeclaredAnnotation(LuaType.class);
+        }
+
         this.type = type;
 
         // perform name enforcement
@@ -140,7 +145,7 @@ public class LuaMeta {
         // reverse the order so we dont fuck up overrides
         // clone parents' metatables
         while (!parents.isEmpty()) {
-            LuaMeta meta = LuaMesh.registerMeta(parents.get(parents.size() - 1));
+            LuaMeta meta = LuaMesh._registerMeta(parents.get(parents.size() - 1));
             if (meta != null) {
                 LuaUtil.clone(this.metatable, meta.metatable, true);
             }
@@ -154,7 +159,11 @@ public class LuaMeta {
         }
 
         for (Method method : type.getDeclaredMethods()) {
-            LuaType typeAnnot = method.getDeclaredAnnotation(LuaType.class);
+            LuaType typeAnnot = method.getAnnotation(LuaType.class);
+            if(method.getDeclaredAnnotation(LuaType.class) != null) {
+                typeAnnot = method.getDeclaredAnnotation(LuaType.class);
+            }
+
             if (typeAnnot != null) {
 
                 // verify that the method is compatible

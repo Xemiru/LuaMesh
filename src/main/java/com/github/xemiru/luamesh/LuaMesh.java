@@ -43,8 +43,10 @@ public class LuaMesh {
     /**
      * Name enforcement option.
      * 
-     * <ul> <li>1 - Class names only.</li> <li>2 - Method
-     * names only.</li> <li>3 - Class and method names.</li>
+     * <ul>
+     * <li>1 - Class names only.</li>
+     * <li>2 - Method names only.</li>
+     * <li>3 - Class and method names.</li>
      * </ul>
      */
     public static short enforcementOption = 1;
@@ -63,7 +65,9 @@ public class LuaMesh {
      * camelcasing.
      */
     public static boolean enforceUnderscore = false;
-    /** Denotes enforcement of lowercasing. */
+    /**
+     * Denotes enforcement of lowercasing.
+     */
     public static boolean enforceLowercase = false;
     /**
      * Denotes whether or not Lua objects will store their
@@ -79,6 +83,23 @@ public class LuaMesh {
         names = new HashMap<>();
     }
 
+    static LuaMeta _registerMeta(Class<?> clazz) {
+        if (metas.containsKey(clazz)) {
+            return metas.get(clazz);
+        }
+
+        LuaType typeAnnot = clazz.getAnnotation(LuaType.class);
+        if (typeAnnot != null) {
+            LuaMeta meta = new LuaMeta(typeAnnot, clazz);
+            metas.put(clazz, meta);
+            names.put(clazz.getName(), meta.getName());
+
+            return meta;
+        }
+
+        return null;
+    }
+
     /**
      * Registers a class as Lua-coercible, and returns the
      * registered {@link LuaMeta}.
@@ -91,21 +112,13 @@ public class LuaMesh {
      *         annotated with LuaType
      */
     public static LuaMeta registerMeta(Class<?> clazz) {
-        if (metas.containsKey(clazz)) {
-            return metas.get(clazz);
+        LuaMeta meta = _registerMeta(clazz);
+        if (meta == null) {
+            throw new IllegalArgumentException(
+                "Lua-coercible classes and members must be annotated with LuaType");
         }
 
-        LuaType typeAnnot = clazz.getDeclaredAnnotation(LuaType.class);
-        if (typeAnnot != null) {
-            LuaMeta meta = new LuaMeta(typeAnnot, clazz);
-            metas.put(clazz, meta);
-            names.put(clazz.getName(), meta.getName());
-
-            return meta;
-        }
-
-        throw new IllegalArgumentException(
-            "Lua-coercible classes and members must be annotated with LuaType");
+        return meta;
     }
 
     /**
