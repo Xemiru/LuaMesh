@@ -23,8 +23,12 @@
  */
 package com.github.xemiru.luamesh;
 
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaValue;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Primary class for LuaMesh.
@@ -43,10 +47,8 @@ public class LuaMesh {
     /**
      * Name enforcement option.
      * 
-     * <ul>
-     * <li>1 - Class names only.</li>
-     * <li>2 - Method names only.</li>
-     * <li>3 - Class and method names.</li>
+     * <ul> <li>1 - Class names only.</li> <li>2 - Method
+     * names only.</li> <li>3 - Class and method names.</li>
      * </ul>
      */
     public static short enforcementOption = 1;
@@ -83,6 +85,17 @@ public class LuaMesh {
         names = new HashMap<>();
     }
 
+    /**
+     * Internal method.
+     * 
+     * <p>The actual meat for the {@link #registerMeta}
+     * method. Does not throw an IllegalArgumentException
+     * for an unannotated class.</p>
+     * 
+     * @param clazz the class to register
+     * 
+     * @return the LuaMeta returned, or null if not found
+     */
     static LuaMeta _registerMeta(Class<?> clazz) {
         if (metas.containsKey(clazz)) {
             return metas.get(clazz);
@@ -119,6 +132,104 @@ public class LuaMesh {
         }
 
         return meta;
+    }
+
+    /**
+     * Call the equivalent Lua function of the named method
+     * on the given object's Lua wrapper if it exists,
+     * otherwise execute and provide the result of the given
+     * supplier.
+     * 
+     * <p>See the test case for implementable stuff for an
+     * example.</p>
+     * 
+     * @param obj the object performing the method
+     * @param methodName the name of the Java method
+     * @param sup the supplier to default to
+     * @param args the parameters passed to the method, to
+     *        give to the Lua function
+     * 
+     * @return the return value of the Lua or Java function
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T lua(Object obj, String methodName, Supplier<T> sup, Object... args) {
+        Object returned = lua(obj, methodName, sup, null, args);
+        try {
+            return (T) returned;
+        } catch (ClassCastException e) {
+            e.printStackTrace();
+            throw new LuaError("bad return value: got " + getLuaName(returned.getClass()));
+        }
+    }
+
+
+    /**
+     * Call the equivalent Lua function of the named method
+     * on the given object's Lua wrapper if it exists,
+     * otherwise execute and provide the result of the given
+     * runnable.
+     * 
+     * <p>See the test case for implementable stuff for an
+     * example.</p>
+     * 
+     * @param obj the object performing the method
+     * @param methodName the name of the Java method
+     * @param sup the runnable to default to
+     * @param args the parameters passed to the method, to
+     *        give to the Lua function
+     */
+    public static void lua(Object obj, String methodName, Runnable sup, Object... args) {
+        lua(obj, methodName, sup, null, args);
+    }
+
+    /**
+     * Call the equivalent Lua function of the named method
+     * on the given object's Lua wrapper if it exists,
+     * otherwise throw an error at the Lua environment.
+     * 
+     * @param obj the object performing the method
+     * @param methodName the name of the Java method
+     * @param args the parameters passed to the method, to
+     *        give to the Lua function
+     * 
+     * @return the return value of the Lua function
+     * 
+     * @throws LuaError if the Lua function wasnt implemented
+     */
+    public static <T> T lua(Object obj, String methodName, Object... args) {
+        return lua(obj, methodName, (Supplier<T>) null, args);
+    }
+
+    // extra null parameter for a unique method signature
+    // because screw trying to cast that
+    static Object lua(Object obj, String methodName, Object sup, Object _null, Object[] args) {
+        // when java calls a lua function
+        LuaObjectValue<?> lobj = LuaObjectValue.of(obj);
+        LuaMeta meta = getMeta(obj.getClass());
+        String luaName = meta.getLuaName(methodName);
+        LuaValue func = lobj.get(luaName);
+        if (!func.isfunction()) {
+            throw new LuaError("bad value: " + luaName + " is expected to be a function");
+        }
+
+        if (!(func instanceof LuaMethodBind)) {
+            // call lua func
+            return LuaUtil.toJava(func.call(lobj, LuaUtil.toLua(args)), false);
+        }
+
+        // the function didn't exist in lua
+        if (sup == null) {
+            // our java method didnt exist either
+            // scream
+            throw new LuaError("bad value: " + luaName + " is expected to be a function");
+        } else {
+            if (sup instanceof Runnable) {
+                ((Runnable) sup).run();
+                return null;
+            }
+
+            return ((Supplier<?>) sup).get();
+        }
     }
 
     /**
