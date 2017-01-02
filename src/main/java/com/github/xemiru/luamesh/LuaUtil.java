@@ -196,4 +196,19 @@ public class LuaUtil {
 
         return type.getDeclaredAnnotation(LuaType.class) != null;
     }
+
+    /**
+     * Prints the contents of a Lua table in <code>key:
+     * value</code> form.
+     * 
+     * <p>Keys and values are printed after being passed
+     * through Lua's <code>tostring</code> function.</p>
+     * 
+     * @param tab the table to print
+     */
+    public static void printTable(LuaTable tab) {
+        iterate(tab, (k, v) -> {
+            System.out.println(k.tojstring() + ": " + v.tojstring());
+        });
+    }
 }
