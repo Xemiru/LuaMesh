@@ -30,8 +30,10 @@ import org.luaj.vm2.LuaValue;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Contains metadata for a Lua-coercible Java type.
@@ -119,9 +121,11 @@ public class LuaMeta {
     private LuaTable metatable;
     private String name;
     private Map<String, String> names;
+    private Set<String> meta;
 
     public LuaMeta(LuaType rannot, Class<?> type) {
         this.names = new HashMap<>();
+        this.meta = new HashSet<>();
 
         LuaType annot = rannot;
         if (type.getDeclaredAnnotation(LuaType.class) != null) {
@@ -154,6 +158,7 @@ public class LuaMeta {
             if (meta != null) {
                 LuaUtil.clone(this.metatable, meta.metatable, true);
                 this.names.putAll(meta.names);
+                this.meta.addAll(meta.meta); // wew, meta meta
             }
         }
 
@@ -195,7 +200,12 @@ public class LuaMeta {
 
                 // in case of override
                 if (this.names.containsKey(mName)) {
-                    this.metatable.set(this.names.get(mName), LuaValue.NIL);
+                    if (typeAnnot.entry() != MetaEntry.INDEX) {
+                        this.metatable.set(typeAnnot.entry().getKey(), LuaValue.NIL);
+                        this.meta.remove(mName);
+                    } else {
+                        __index.set(this.names.get(mName), LuaValue.NIL);
+                    }
                 }
 
                 // apply the name override if its there
@@ -203,9 +213,8 @@ public class LuaMeta {
                 String aName = typeAnnot.name().trim();
 
                 // check if we need to replace, in case of override
-                if(!aName.isEmpty() || !this.names.containsKey(mName)) {
-                    String name = convertMethodName(method, aName);
-                    this.names.put(mName, name);
+                if (!aName.isEmpty() || !this.names.containsKey(mName)) {
+                    aName = convertMethodName(method, aName);
                 }
 
                 try {
@@ -213,8 +222,11 @@ public class LuaMeta {
                     LuaMethodBind lfunc = new LuaMethodBind(method);
                     if (typeAnnot.entry() != MetaEntry.INDEX) {
                         this.metatable.set(typeAnnot.entry().getKey(), lfunc);
+                        this.names.put(mName, typeAnnot.entry().getKey().tojstring());
+                        this.meta.add(mName);
                     } else {
                         __index.set(mName, lfunc);
+                        this.names.put(mName, aName);
                     }
                 } catch (IllegalAccessException e) {
                     // let it cause a crash, this isn't good
@@ -255,6 +267,19 @@ public class LuaMeta {
      */
     public LuaTable getMetatable() {
         return this.metatable;
+    }
+
+    /**
+     * Returns whether or not the provided member's Java
+     * name was registered within the Lua objects'
+     * main metatable (the one holding __index).
+     * 
+     * @param memberName the name of the Java member
+     * 
+     * @return if the member resides in the main metatable
+     */
+    public boolean isMeta(String memberName) {
+        return meta.contains(memberName);
     }
 
     /**

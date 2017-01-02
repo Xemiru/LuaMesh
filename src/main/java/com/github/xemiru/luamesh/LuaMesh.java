@@ -208,6 +208,10 @@ public class LuaMesh {
         LuaMeta meta = getMeta(obj.getClass());
         String luaName = meta.getLuaName(methodName);
         LuaValue func = lobj.get(luaName);
+        if(meta.isMeta(methodName)) {
+            func = lobj.getmetatable().get(luaName);
+        }
+
         if (!func.isfunction()) {
             throw new LuaError("bad value: " + luaName + " is expected to be a function");
         }
