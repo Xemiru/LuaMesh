@@ -24,6 +24,7 @@
 package com.github.xemiru.luamesh;
 
 import com.github.xemiru.luamesh.LuaType;
+import com.github.xemiru.luamesh.LuaType.MetaEntry;
 
 @LuaType
 public class LuaObjectThing {
@@ -42,6 +43,12 @@ public class LuaObjectThing {
     @LuaType
     public LuaObjectThing objMethod(LuaObjectThing a, LuaObjectThing b) {
         return new LuaObjectThing();
+    }
+
+    @LuaType(entry = MetaEntry.ADD)
+    public LuaObjectThing add(LuaObjectThing a) {
+        System.out.println("added and did nothing woo");
+        return null;
     }
 
     public void notAMethod() {}

@@ -78,10 +78,6 @@ public class TestLuaMesh {
 
         // Make sure we're getting the right typename and function entries.
         assertEquals("luaObjectThing", ctype.call(obj).checkjstring());
-        assertEquals(true, obj.get("voidMethod").isfunction());
-        assertEquals(true, obj.get("intMethod").isfunction());
-        assertEquals(true, obj.get("objMethod").isfunction());
-        assertEquals(false, obj.get("notAMethod").isfunction());
 
         // something's wrong if these throw exceptions
         obj.get("voidMethod").call(obj);
@@ -89,6 +85,9 @@ public class TestLuaMesh {
         obj.get("objMethod").call(obj);
         obj.get("objMethod").call(obj, obj);
         obj.get("objMethod").call(obj, obj, obj);
+
+        // test add metamethod
+        assertEquals(LuaValue.NIL, obj.add(obj));
     }
 
     @Test
