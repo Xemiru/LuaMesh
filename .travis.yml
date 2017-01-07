@@ -1,0 +1,16 @@
+language: java
+cache: false
+sudo: false
+
+jdk:
+  - oraclejdk8
+
+before_install:
+  - cd ~
+  - mkdir .gradle
+  - cd .gradle/
+  - printf "sonaUser=not\nsonaPass=used\n" >> gradle.properties
+  - cd $TRAVIS_BUILD_DIR
+  - chmod +x ./gradlew
+
+script: bash ./compile.sh
