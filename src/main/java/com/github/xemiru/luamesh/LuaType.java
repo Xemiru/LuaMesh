@@ -79,6 +79,9 @@ public @interface LuaType {
      * 
      * <p>Names are completely ignored if this member is not
      * placed in {@link MetaEntry#INDEX}.</p>
+     * 
+     * @return the override for the target member's Lua
+     *         name, or empty string if no override
      */
     String name() default "";
 
@@ -89,6 +92,8 @@ public @interface LuaType {
      * 
      * <p>By default, members are placed in
      * {@link MetaEntry#INDEX}.</p>
+     * 
+     * @return the MetaEntry to place the target member in
      */
     MetaEntry entry() default MetaEntry.INDEX;
 

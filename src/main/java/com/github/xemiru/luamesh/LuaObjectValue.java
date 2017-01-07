@@ -53,6 +53,7 @@ public class LuaObjectValue<T> extends LuaTable {
      * Otherwise, a new one is generated, registered and
      * returned.</p>
      * 
+     * @param <T> the Java type held by the object value
      * @param object the Object for the value to hold
      * 
      * @return the LuaObjectValue holding the provided

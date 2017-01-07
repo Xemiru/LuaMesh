@@ -143,6 +143,7 @@ public class LuaMesh {
      * <p>See the test case for implementable stuff for an
      * example.</p>
      * 
+     * @param <T> the return type of the method
      * @param obj the object performing the method
      * @param methodName the name of the Java method
      * @param sup the supplier to default to
@@ -187,6 +188,7 @@ public class LuaMesh {
      * on the given object's Lua wrapper if it exists,
      * otherwise throw an error at the Lua environment.
      * 
+     * @param <T> the return type of the method
      * @param obj the object performing the method
      * @param methodName the name of the Java method
      * @param args the parameters passed to the method, to
