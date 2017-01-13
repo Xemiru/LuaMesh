@@ -35,11 +35,7 @@ import java.lang.annotation.Target;
  * Defines class and class members able to be pushed into a
  * Lua environment.
  * 
- * <p>This annotation is <strong>ALWAYS</strong> processed
- * without considering inheritance, that is, if a class
- * member was annotated in a superclass, it will not be
- * considered annotated in its subclasses unless explicitly
- * redefined.</p>
+ * <p>Target classes and/or members must be public.</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
@@ -84,6 +80,19 @@ public @interface LuaType {
      *         name, or empty string if no override
      */
     String name() default "";
+
+    /**
+     * Marks this member as abstract. Applies to methods
+     * only.
+     * 
+     * <p>If the method is marked abstract, the method body
+     * is ignored and the Lua object holding the abstract
+     * method is required to implement the corresponding
+     * function, checked upon calling the method.</p>
+     * 
+     * @return if the method is marked as "empty"
+     */
+    boolean abstractt() default false;
 
     /**
      * Sets where the member is placed in the object's

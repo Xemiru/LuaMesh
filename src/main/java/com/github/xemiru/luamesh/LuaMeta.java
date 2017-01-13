@@ -154,7 +154,7 @@ public class LuaMeta {
         // reverse the order so we dont fuck up overrides
         // clone parents' metatables
         while (!parents.isEmpty()) {
-            LuaMeta meta = LuaMesh._registerMeta(parents.get(parents.size() - 1));
+            LuaMeta meta = LuaMesh.registerMeta(parents.get(parents.size() - 1));
             if (meta != null) {
                 LuaUtil.clone(this.metatable, meta.metatable, true);
                 this.names.putAll(meta.names);

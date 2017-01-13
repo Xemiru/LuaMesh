@@ -25,9 +25,13 @@ package com.github.xemiru.luamesh;
 
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -79,24 +83,23 @@ public class LuaMesh {
 
     private static Map<String, String> names;
     private static Map<Class<?>, LuaMeta> metas;
+    private static Set<String> classes;
 
     static {
         metas = new HashMap<>();
         names = new HashMap<>();
+        classes = new HashSet<>();
     }
 
     /**
-     * Internal method.
-     * 
-     * <p>The actual meat for the {@link #registerMeta}
-     * method. Does not throw an IllegalArgumentException
-     * for an unannotated class.</p>
+     * Internal method. Registers the metadata for
+     * Lua-coercible classes.
      * 
      * @param clazz the class to register
      * 
      * @return the LuaMeta returned, or null if not found
      */
-    static LuaMeta _registerMeta(Class<?> clazz) {
+    static LuaMeta registerMeta(Class<?> clazz) {
         if (metas.containsKey(clazz)) {
             return metas.get(clazz);
         }
@@ -114,24 +117,47 @@ public class LuaMesh {
     }
 
     /**
-     * Registers a class as Lua-coercible, and returns the
-     * registered {@link LuaMeta}.
+     * Registers a class, referred to by its fully-qualified
+     * name, as Lua-coercible.
      * 
-     * @param clazz the class to register
-     * 
-     * @return the LuaMeta returned
-     * 
-     * @throws IllegalArgumentException if clazz is not
-     *         annotated with LuaType
+     * @param clazz the class to register, by its qualified
+     *        name (e.g. java.lang.Integer)
      */
-    public static LuaMeta registerMeta(Class<?> clazz) {
-        LuaMeta meta = _registerMeta(clazz);
-        if (meta == null) {
-            throw new IllegalArgumentException(
-                "Lua-coercible classes and members must be annotated with LuaType");
+    public static void register(String clazz) {
+        if (classes != null) {
+            classes.add(clazz);
         }
+    }
 
-        return meta;
+    /**
+     * Initializes the classes registered to be loaded by
+     * LuaMesh.
+     * 
+     * <p>This method can only be called once, future calls
+     * result in a no-op.</p>
+     * 
+     * @throws Throwable
+     */
+    public static void init() throws Throwable {
+        if (classes != null) {
+            try {
+                for (String str : classes) {
+                    String qname = str.replaceAll("\\.", "/");
+                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+                    MeshTransformer mt = new MeshTransformer(cw);
+                    ClassReader cr = new ClassReader(qname);
+                    cr.accept(mt, 0);
+
+                    MeshTransformer.transform(str, cw.toByteArray());
+                }
+
+                for (String str : classes) {
+                    registerMeta(Class.forName(str, true, ClassLoader.getSystemClassLoader()));
+                }
+            } finally {
+                classes = null;
+            }
+        }
     }
 
     /**
@@ -139,9 +165,6 @@ public class LuaMesh {
      * on the given object's Lua wrapper if it exists,
      * otherwise execute and provide the result of the given
      * supplier.
-     * 
-     * <p>See the test case for implementable stuff for an
-     * example.</p>
      * 
      * @param <T> the return type of the method
      * @param obj the object performing the method
@@ -170,9 +193,6 @@ public class LuaMesh {
      * otherwise execute and provide the result of the given
      * runnable.
      * 
-     * <p>See the test case for implementable stuff for an
-     * example.</p>
-     * 
      * @param obj the object performing the method
      * @param methodName the name of the Java method
      * @param sup the runnable to default to
@@ -183,25 +203,6 @@ public class LuaMesh {
         lua(obj, methodName, sup, null, args);
     }
 
-    /**
-     * Call the equivalent Lua function of the named method
-     * on the given object's Lua wrapper if it exists,
-     * otherwise throw an error at the Lua environment.
-     * 
-     * @param <T> the return type of the method
-     * @param obj the object performing the method
-     * @param methodName the name of the Java method
-     * @param args the parameters passed to the method, to
-     *        give to the Lua function
-     * 
-     * @return the return value of the Lua function
-     * 
-     * @throws LuaError if the Lua function wasnt implemented
-     */
-    public static <T> T lua(Object obj, String methodName, Object... args) {
-        return lua(obj, methodName, (Supplier<T>) null, args);
-    }
-
     // extra null parameter for a unique method signature
     // because screw trying to cast that
     static Object lua(Object obj, String methodName, Object sup, Object _null, Object[] args) {
@@ -210,7 +211,7 @@ public class LuaMesh {
         LuaMeta meta = getMeta(obj.getClass());
         String luaName = meta.getLuaName(methodName);
         LuaValue func = lobj.get(luaName);
-        if(meta.isMeta(methodName)) {
+        if (meta.isMeta(methodName)) {
             func = lobj.getmetatable().get(luaName);
         }
 
@@ -225,6 +226,7 @@ public class LuaMesh {
 
         // the function didn't exist in lua
         if (sup == null) {
+            System.out.println("method " + methodName + " is abstract");
             // our java method didnt exist either
             // scream
             throw new LuaError("bad value: " + luaName + " is expected to be a function");

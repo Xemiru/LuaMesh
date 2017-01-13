@@ -30,6 +30,7 @@ repositories {
 
 dependencies {
   compile 'org.luaj:luaj-jse:3.0.1'
+  compile 'org.ow2.asm:asm:5.1'
   testCompile 'junit:junit:4.12'
 }
 

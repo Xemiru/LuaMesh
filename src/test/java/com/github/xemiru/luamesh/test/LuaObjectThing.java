@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.github.xemiru.luamesh;
+package com.github.xemiru.luamesh.test;
 
 import com.github.xemiru.luamesh.LuaType;
 import com.github.xemiru.luamesh.LuaType.MetaEntry;
@@ -50,6 +50,9 @@ public class LuaObjectThing {
         System.out.println("added and did nothing woo");
         return null;
     }
+
+    @LuaType(abstractt = true)
+    public void blankMethod() {}
 
     public void notAMethod() {}
 }
