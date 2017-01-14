@@ -219,7 +219,10 @@ public class LuaMeta {
 
                 try {
                     // register
+                    method.setAccessible(true);
                     LuaMethodBind lfunc = new LuaMethodBind(method);
+                    method.setAccessible(false);
+
                     if (typeAnnot.entry() != MetaEntry.INDEX) {
                         this.metatable.set(typeAnnot.entry().getKey(), lfunc);
                         this.names.put(mName, typeAnnot.entry().getKey().tojstring());

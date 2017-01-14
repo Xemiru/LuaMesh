@@ -52,7 +52,6 @@ import org.objectweb.asm.Type;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -129,11 +128,6 @@ public class MeshTransformer extends ClassVisitor {
             this.exceptions = exceptions;
             this.abstractt = false;
             this.lua = false;
-
-            if (!Modifier.isPublic(access)) {
-                throw new InvalidCoercionTargetException(
-                    String.format("Method \"%s\" of class %s is not public", name, cname));
-            }
         }
 
         @Override
