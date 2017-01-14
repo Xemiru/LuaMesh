@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-  compile 'com.github.xemiru:luamesh:1.0'
+    compile 'com.github.xemiru:luamesh:1.0'
 }
 ```
 
@@ -48,7 +48,7 @@ g.set("javaobj", LuaObjectValue.of(obj));
 For the passed object to have usable methods, the object's class and Lua-accessible methods must be annotated with `@LuaType`.
 
 ```java
-package luamesh.is.ok.iguess
+package luamesh.is.ok.iguess;
 
 @LuaType
 public class MeshedObject {
@@ -96,7 +96,7 @@ public void abstractMethod() {
 
 [LuaType javadoc here.](https://xemiru.github.io/LuaMesh/latest/com/github/xemiru/luamesh/LuaType.html)
 
----
+### Changing names
 
 Methods to be passed as a Lua function can be set to have a different name from the Java method, by setting an overriding value to the `LuaType` annotation.
 
@@ -118,7 +118,7 @@ public class MyObject {
 
 If no override is passed, it will by default simply copy the declared name. This may not be favorable for some naming schemes if one wishes to follow a separate one for the Lua environment. The most common changes for naming schemes can be applied by LuaMesh directly, and can be configured by changing constants within the `LuaMesh` class.
 
----
+### Metatable entries
 
 Lua allows objects to override their behavior when passed to an operator by pushing a corresponding function to their metatables. This can be done by LuaMesh by passing the metafunction to overwrite to the `LuaType` annotation.
 
