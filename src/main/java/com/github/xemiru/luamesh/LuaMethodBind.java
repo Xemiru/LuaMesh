@@ -107,6 +107,10 @@ public class LuaMethodBind extends VarArgFunction {
         try {
             return LuaUtil.toLua(mh.invokeWithArguments(params));
         } catch (Throwable e) {
+            if (e instanceof LuaError) {
+                throw (LuaError) e; // ignore it
+            }
+
             System.err.print("Exception occurred while executing Java method from Lua: ");
             e.printStackTrace();
             throw new LuaError(translateException(e));
