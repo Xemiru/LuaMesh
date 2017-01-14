@@ -81,6 +81,17 @@ public class Main {
 
 It is recommended that LuaMesh be the **FIRST** thing to be set up, as class transformations that inject the necessary code require that the target classes not be loaded by the Java Virtual Machine prior. This means references to the classes at any point must not occur before the `init` method (which means something like `LuaMesh.register(MyClass.class.getName())` would be illegal).
 
+## Implementable Methods
+
+The method can request LuaMesh to ensure that the object is required to have its function implemented by the object itself. This can be done by setting the `abstractt` flag in the `LuaType` annotation.
+
+```java
+@LuaMesh(abstractt = true)
+public void abstractMethod() {
+    // empty body; LuaMesh will completely ignore this regardless
+}
+```
+
 ## LuaType annotation
 
 [LuaType javadoc here.](https://xemiru.github.io/LuaMesh/latest/com/github/xemiru/luamesh/LuaType.html)
