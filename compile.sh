@@ -13,7 +13,7 @@ if [[ "$TRAVIS_BRANCH" != "$SOURCE" || "$TRAVIS_PULL_REQUEST" != "false" ]]; the
 	exit 0
 fi
 
-if [[ -n "$TRAVIS_TAG" ]]; then
+if [[ -n "${TRAVIS_TAG+}" ]]; then
 	TAG="$TRAVIS_TAG"
 fi
 
