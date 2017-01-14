@@ -84,6 +84,7 @@ public class LuaMethodBind extends VarArgFunction {
 
     @Override
     public Varargs invoke(Varargs args) {
+        // gather parameters
         Object[] params = new Object[staticc ? paramCount : paramCount + 1];
         for (int i = 0; i < params.length; i++) {
             LuaValue v = args.arg(i + 1);
@@ -91,6 +92,7 @@ public class LuaMethodBind extends VarArgFunction {
             if (v.isnil()) {
                 params[i] = null;
             } else {
+                // turn them into Java objects
                 if (staticc) {
                     params[i] = LuaUtil.toJava(v, numtypes[i]);
                 } else {

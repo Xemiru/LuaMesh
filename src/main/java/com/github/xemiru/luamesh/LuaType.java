@@ -47,7 +47,7 @@ public @interface LuaType {
      * 
      * <p>See http://lua-users.org/wiki/MetatableEvents for
      * information as to how each metatable entry
-     * function.</p>
+     * functions.</p>
      */
     public static enum MetaEntry {
         // generic

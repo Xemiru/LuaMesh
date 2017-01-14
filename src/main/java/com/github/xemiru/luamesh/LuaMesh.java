@@ -51,8 +51,10 @@ public class LuaMesh {
     /**
      * Name enforcement option.
      * 
-     * <ul> <li>1 - Class names only.</li> <li>2 - Method
-     * names only.</li> <li>3 - Class and method names.</li>
+     * <ul>
+     * <li>1 - Class names only.</li>
+     * <li>2 - Method names only.</li>
+     * <li>3 - Class and method names.</li>
      * </ul>
      */
     public static short enforcementOption = 1;
@@ -136,7 +138,7 @@ public class LuaMesh {
      * <p>This method can only be called once, future calls
      * result in a no-op.</p>
      * 
-     * @throws Throwable
+     * @throws Throwable if something goes wrong :^)
      */
     public static void init() throws Throwable {
         if (classes != null) {

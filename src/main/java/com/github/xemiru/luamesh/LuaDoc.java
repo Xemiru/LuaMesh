@@ -28,6 +28,8 @@ import java.lang.annotation.Target;
 
 /**
  * Helps generate Lua documentation for defined types.
+ * 
+ * <p>Currently unused.</p>
  */
 @Target(value = {ElementType.TYPE, ElementType.METHOD})
 public @interface LuaDoc {
