@@ -21,13 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.github.xemiru.luamesh.test;
+package com.github.xemiru.luamesh.test2;
 
 import static org.junit.Assert.assertEquals;
 
 import com.github.xemiru.luamesh.FunctionCType;
 import com.github.xemiru.luamesh.LuaMesh;
 import com.github.xemiru.luamesh.LuaObjectValue;
+import com.github.xemiru.luamesh.test.Dummy;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,7 +85,7 @@ public class TestLuaMesh {
 
     @Test
     public void test() {
-        g.set("obj", LuaObjectValue.of(new LuaObjectThing()));
+        g.set("obj", LuaObjectValue.of(Dummy.thing));
         LuaValue obj = g.get("obj");
 
         // Make sure we're getting the right typename and function entries.

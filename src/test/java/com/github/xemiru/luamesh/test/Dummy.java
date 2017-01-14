@@ -23,36 +23,8 @@
  */
 package com.github.xemiru.luamesh.test;
 
-import com.github.xemiru.luamesh.LuaType;
-import com.github.xemiru.luamesh.LuaType.MetaEntry;
+public class Dummy {
 
-@LuaType
-class LuaObjectThing {
+    public static final LuaObjectThing thing = new LuaObjectThing();
 
-    @LuaType
-    public void voidMethod() {
-        // callable in Lua as :voidMethod()
-        System.out.println("void method");
-    }
-
-    @LuaType
-    int intMethod() {
-        return 0; // callable in Lua as :intMethod(), returns lua integer
-    }
-
-    @LuaType
-    public LuaObjectThing objMethod(LuaObjectThing a, LuaObjectThing b) {
-        return new LuaObjectThing();
-    }
-
-    @LuaType(entry = MetaEntry.ADD)
-    public LuaObjectThing add(LuaObjectThing a) {
-        System.out.println("added and did nothing woo");
-        return null;
-    }
-
-    @LuaType(abstractt = true)
-    public void blankMethod() {}
-
-    public void notAMethod() {}
 }
