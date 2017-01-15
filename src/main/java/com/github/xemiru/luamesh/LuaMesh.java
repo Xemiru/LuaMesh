@@ -51,10 +51,8 @@ public class LuaMesh {
     /**
      * Name enforcement option.
      * 
-     * <ul>
-     * <li>1 - Class names only.</li>
-     * <li>2 - Method names only.</li>
-     * <li>3 - Class and method names.</li>
+     * <ul> <li>1 - Class names only.</li> <li>2 - Method
+     * names only.</li> <li>3 - Class and method names.</li>
      * </ul>
      */
     public static short enforcementOption = 1;
@@ -86,11 +84,13 @@ public class LuaMesh {
     private static Map<String, String> names;
     private static Map<Class<?>, LuaMeta> metas;
     private static List<String> classes;
+    private static List<Class<? extends LuaLibrary>> lclasses;
 
     static {
         metas = new HashMap<>();
         names = new HashMap<>();
         classes = new ArrayList<>();
+        lclasses = new ArrayList<>();
     }
 
     /**
@@ -132,6 +132,18 @@ public class LuaMesh {
     }
 
     /**
+     * Registers a {@link LuaLibrary} for usage.
+     * 
+     * @param libClass the class of the LuaLibrary to
+     *        register
+     */
+    public static void registerLib(Class<? extends LuaLibrary> libClass) {
+        if (lclasses != null) {
+            lclasses.add(libClass);
+        }
+    }
+
+    /**
      * Initializes the classes registered to be loaded by
      * LuaMesh.
      * 
@@ -156,8 +168,13 @@ public class LuaMesh {
                 for (String str : classes) {
                     registerMeta(Class.forName(str, true, ClassLoader.getSystemClassLoader()));
                 }
+
+                for(Class<? extends LuaLibrary> lclass : lclasses) {
+                    LuaLibrary.register(lclass);
+                }
             } finally {
                 classes = null;
+                lclasses = null;
             }
         }
     }

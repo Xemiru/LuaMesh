@@ -82,12 +82,15 @@ public class LuaMethodBind extends VarArgFunction {
         }
     }
 
-    @Override
-    public Varargs invoke(Varargs args) {
+    public Varargs invoke(Object obj, Varargs args) {
         // gather parameters
         Object[] params = new Object[staticc ? paramCount : paramCount + 1];
         for (int i = 0; i < params.length; i++) {
             LuaValue v = args.arg(i + 1);
+            if(i == 0 && obj != null) {
+                params[0] = obj;
+                continue;
+            }
 
             if (v.isnil()) {
                 params[i] = null;
@@ -117,6 +120,11 @@ public class LuaMethodBind extends VarArgFunction {
             e.printStackTrace();
             throw new LuaError(translateException(e));
         }
+    }
+
+    @Override
+    public Varargs invoke(Varargs args) {
+        return this.invoke((Object) null, args);
     }
 
 }
