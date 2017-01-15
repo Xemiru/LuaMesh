@@ -28,10 +28,10 @@ import org.luaj.vm2.LuaValue;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -85,12 +85,12 @@ public class LuaMesh {
 
     private static Map<String, String> names;
     private static Map<Class<?>, LuaMeta> metas;
-    private static Set<String> classes;
+    private static List<String> classes;
 
     static {
         metas = new HashMap<>();
         names = new HashMap<>();
-        classes = new HashSet<>();
+        classes = new ArrayList<>();
     }
 
     /**

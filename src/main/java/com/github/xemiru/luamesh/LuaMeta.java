@@ -154,12 +154,21 @@ public class LuaMeta {
         // reverse the order so we dont fuck up overrides
         // clone parents' metatables
         while (!parents.isEmpty()) {
-            LuaMeta meta = LuaMesh.registerMeta(parents.get(parents.size() - 1));
-            if (meta != null) {
+            Class<?> p = parents.get(parents.size() - 1);
+            if (p.getDeclaredAnnotation(LuaType.class) != null) {
+                LuaMeta meta = LuaMesh.getMeta(p);
+                if (meta == null) {
+                    throw new InvalidCoercionTargetException(String.format(
+                        "Parent class %s of class %s has not been registered; could not inherit",
+                        p.getName(), type.getName()));
+                }
+
                 LuaUtil.clone(this.metatable, meta.metatable, true);
                 this.names.putAll(meta.names);
                 this.meta.addAll(meta.meta); // wew, meta meta
             }
+
+            parents.remove(p);
         }
 
         // apply the target class's stuff
@@ -176,26 +185,6 @@ public class LuaMeta {
             }
 
             if (typeAnnot != null) {
-
-                // verify that the method is compatible
-                /*
-                 * for (Class<?> paramType :
-                 * method.getParameterTypes()) { if
-                 * (!LuaUtil.isConvertable(paramType)) {
-                 * throw new InvalidCoercionTargetException(
-                 * String.
-                 * format("Method %s of class %s has uncoercible parameter type %s"
-                 * , method.getName(), type.getName(),
-                 * paramType.getName())); } }
-                 * 
-                 * if (!LuaUtil.isConvertable(method.
-                 * getReturnType())) { throw new
-                 * InvalidCoercionTargetException( String.
-                 * format("Method %s of class %s has uncoercible return type %s"
-                 * , method.getName(), type.getName(),
-                 * method.getReturnType().getName())); }
-                 */
-
                 String mName = method.getName();
 
                 // in case of override
@@ -274,8 +263,8 @@ public class LuaMeta {
 
     /**
      * Returns whether or not the provided member's Java
-     * name was registered within the Lua objects'
-     * main metatable (the one holding __index).
+     * name was registered within the Lua objects' main
+     * metatable (the one holding __index).
      * 
      * @param memberName the name of the Java member
      * 
