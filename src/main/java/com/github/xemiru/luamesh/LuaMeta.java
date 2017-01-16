@@ -179,10 +179,7 @@ public class LuaMeta {
         }
 
         for (Method method : type.getDeclaredMethods()) {
-            LuaType typeAnnot = method.getAnnotation(LuaType.class);
-            if (method.getDeclaredAnnotation(LuaType.class) != null) {
-                typeAnnot = method.getDeclaredAnnotation(LuaType.class);
-            }
+            LuaType typeAnnot = method.getDeclaredAnnotation(LuaType.class);
 
             if (typeAnnot != null) {
                 String mName = method.getName();

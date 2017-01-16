@@ -35,6 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * A Lua library implemented by Java methods.
+ */
 public class LuaLibrary extends TwoArgFunction {
 
     private class MethodBindDelegate extends VarArgFunction {
@@ -59,7 +62,8 @@ public class LuaLibrary extends TwoArgFunction {
     /**
      * Registers a {@link LuaLibrary} for usage.
      * 
-     * @param libClass the class of the LuaLibrary to register
+     * @param libClass the class of the LuaLibrary to
+     *        register
      * 
      * @throws Throwable if something goes wrong
      */
@@ -72,17 +76,28 @@ public class LuaLibrary extends TwoArgFunction {
         Class<?> superr = libClass.getSuperclass();
         List<Class<?>> supers = new ArrayList<>();
         while (superr != Object.class) {
-            supers.add(superr);
+            if (superr.getDeclaredAnnotation(LuaType.class) != null) {
+                supers.add(superr);
+            }
+
             superr = superr.getSuperclass();
         }
 
-        
+        while (!supers.isEmpty()) {
+            superr = supers.get(supers.size() - 1);
+            Map<String, LuaMethodBind> sfuncs = libs.get(superr);
+            if (sfuncs == null) {
+                throw new InvalidCoercionTargetException(String.format(
+                    "Parent library %s of library %s has not been registered; could not inherit",
+                    superr.getName(), libClass.getName()));
+            }
+
+            funcs.putAll(sfuncs);
+            supers.remove(superr);
+        }
 
         for (Method m : libClass.getDeclaredMethods()) {
-            LuaType annot = m.getAnnotation(LuaType.class);
-            if (m.getDeclaredAnnotation(LuaType.class) != null) {
-                annot = m.getDeclaredAnnotation(LuaType.class);
-            }
+            LuaType annot = m.getDeclaredAnnotation(LuaType.class);
 
             if (annot != null) {
                 funcs.put(LuaMeta.convertMethodName(m, annot.name().trim()), new LuaMethodBind(m));
