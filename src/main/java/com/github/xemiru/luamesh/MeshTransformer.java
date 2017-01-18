@@ -25,7 +25,6 @@ package com.github.xemiru.luamesh;
 
 import static org.objectweb.asm.Opcodes.AASTORE;
 import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
 import static org.objectweb.asm.Opcodes.ACONST_NULL;
 import static org.objectweb.asm.Opcodes.ALOAD;
@@ -37,6 +36,7 @@ import static org.objectweb.asm.Opcodes.CHECKCAST;
 import static org.objectweb.asm.Opcodes.DRETURN;
 import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.FRETURN;
+import static org.objectweb.asm.Opcodes.H_INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.H_INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
@@ -171,15 +171,16 @@ public class MeshTransformer extends ClassVisitor {
                     }
 
                     // get our sup by
+                    String lparams = "(L" + cname + ";" + mparams.substring(1);
                     if (run) { // generating a runnable
-                        mv.visitInvokeDynamicInsn("run", mparams + "Ljava/lang/Runnable;",
+                        mv.visitInvokeDynamicInsn("run", lparams + "Ljava/lang/Runnable;",
                             LAMBDA_BS, Type.getType("()V"),
-                            new Handle(H_INVOKESTATIC, cname, lam, desc, false),
+                            new Handle(H_INVOKESPECIAL, cname, lam, desc, false),
                             Type.getType("()V"));
                     } else { // generating a supplier
-                        mv.visitInvokeDynamicInsn("get", mparams + "Ljava/util/function/Supplier;",
+                        mv.visitInvokeDynamicInsn("get", lparams + "Ljava/util/function/Supplier;",
                             LAMBDA_BS, Type.getType("()Ljava/lang/Object;"),
-                            new Handle(H_INVOKESTATIC, cname, lam, desc, false),
+                            new Handle(H_INVOKESPECIAL, cname, lam, desc, false),
                             Type.getType("()Ljava/lang/Object;"));
                     }
                 }
@@ -253,7 +254,7 @@ public class MeshTransformer extends ClassVisitor {
                 mv.visitEnd();
 
                 // let the original method get turned into our lambda method
-                this.mv = cv.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, lam, desc,
+                this.mv = cv.visitMethod(ACC_PRIVATE + ACC_SYNTHETIC, lam, desc,
                     signature, exceptions);
             }
 
