@@ -36,11 +36,13 @@ import org.luaj.vm2.lib.OneArgFunction;
  * LuaObjectValue. The return value of this function is
  * dictated by the following instructions:</p>
  * 
- * <ul>
- * <li>If the Lua object's metatable contains a __type metakey, its value is returned.</li>
- * <li>If the Lua object is a LuaObjectValue, its meta is queried for its typename.</li>
- * <li>If the Lua object is a LuaObjectValue, but does not have a meta, its held Java object's class name is name-enforced and returned.</li>
- * <li>Otherwise, works similarly to Lua's built-in type() function.</li>
+ * <ul> <li>If the Lua object's metatable contains a __type
+ * metakey, its value is returned.</li> <li>If the Lua
+ * object is a LuaObjectValue, its meta is queried for its
+ * typename.</li> <li>If the Lua object is a LuaObjectValue,
+ * but does not have a meta, its held Java object's class
+ * name is name-enforced and returned.</li> <li>Otherwise,
+ * works similarly to Lua's built-in type() function.</li>
  * </ul>
  * 
  * <p>Injection of this function into a Lua environment
@@ -55,8 +57,6 @@ import org.luaj.vm2.lib.OneArgFunction;
  * </pre>
  */
 public class FunctionCType extends OneArgFunction {
-
-    static final LuaValue TYPE_JOBJ = LuaValue.valueOf("jobj");
 
     @Override
     public LuaValue call(LuaValue arg) {
