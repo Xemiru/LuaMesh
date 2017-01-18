@@ -139,16 +139,13 @@ public class LuaMeta {
 
         // generate the metatable
         this.metatable = new LuaTable();
-        if (LuaMesh.useTypeMetakey) {
-            this.metatable.set("__type", LuaValue.valueOf(name));
-        }
 
         // first, get the parents' stuff
         List<Class<?>> parents = new ArrayList<>();
         Class<?> parent = type.getSuperclass();
         while (parent != null && parent != Object.class) {
             parents.add(parent);
-            parent = type.getSuperclass();
+            parent = parent.getSuperclass();
         }
 
         // reverse the order so we dont fuck up overrides
@@ -172,6 +169,10 @@ public class LuaMeta {
         }
 
         // apply the target class's stuff
+        if (LuaMesh.useTypeMetakey) {
+            this.metatable.set("__type", LuaValue.valueOf(name));
+        }
+
         LuaValue __index = this.metatable.get(LuaValue.INDEX);
         if (__index.isnil()) {
             __index = new LuaTable();
@@ -214,7 +215,7 @@ public class LuaMeta {
                         this.names.put(mName, typeAnnot.entry().getKey().tojstring());
                         this.meta.add(mName);
                     } else {
-                        __index.set(mName, lfunc);
+                        __index.set(aName, lfunc);
                         this.names.put(mName, aName);
                     }
                 } catch (IllegalAccessException e) {
