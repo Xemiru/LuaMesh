@@ -23,12 +23,14 @@
  */
 package com.github.xemiru.luamesh.test2;
 
+import static com.github.xemiru.luamesh.LuaObjectValue.of;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import com.github.xemiru.luamesh.FunctionCType;
 import com.github.xemiru.luamesh.LuaMesh;
-import com.github.xemiru.luamesh.LuaObjectValue;
-import com.github.xemiru.luamesh.test.Dummy;
+import com.github.xemiru.luamesh.test.TestA;
+import com.github.xemiru.luamesh.test.TestB;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,50 +66,76 @@ public class TestLuaMesh {
     }
 
     private Globals g;
-    private FunctionCType ctype;
+    private LuaValue ctype;
 
     @Before
     public void prepare() {
-        LuaMesh.register("com.github.xemiru.luamesh.test.LuaObjectThing");
+        if (g == null) { // this only needs to happen once
+            // in order of inheritance
+            LuaMesh.register("com.github.xemiru.luamesh.test.TestA");
+            LuaMesh.register("com.github.xemiru.luamesh.test.TestB");
+
+            try {
+                LuaMesh.init();
+            } catch (Throwable e) {
+                e.printStackTrace();
+                Assert.fail(e.getMessage());
+            }
+
+            g = JsePlatform.debugGlobals();
+            g.set("ctype", new FunctionCType());
+            ctype = (FunctionCType) g.get("ctype");
+
+            g.set("a", of(new TestA()));
+            g.set("b", of(new TestB()));
+        }
+    }
+
+    @Test
+    public void names() {
+        LuaValue a = g.get("a");
+        LuaValue b = g.get("b");
+
+        // Test names.
+        assertEquals("TestA", ctype.call(a).tojstring()); // annot didnt override, should be original class name
+        assertEquals("TestBB", ctype.call(b).tojstring()); // annot specifies TestBB
+
+        // Test method name change.
+        assertEquals(LuaValue.NIL, b.get("intMethod")); // should be gone
+        assertNotEquals(LuaValue.NIL, b.get("luaintMethod")); // annot specifies luaintMethod
+    }
+
+    @Test
+    public void methods() {
+        LuaValue a = g.get("a");
+        LuaValue b = g.get("b");
 
         try {
-            LuaMesh.init();
+            // TestA methods
+            a.get("voidMethod").call(a);
+            assertNotEquals(null, a.get("objMethod").call(a, of(new Object())));
+
+            // intMethod and override
+            assertEquals(0, a.get("intMethod").call(a).checkint());
+            assertEquals(1, b.get("luaintMethod").call(b).checkint()); // override in TestB
+
+            // add metamethod
+            assertEquals(b, a.add(b));
         } catch (Throwable e) {
             e.printStackTrace();
             Assert.fail(e.getMessage());
         }
 
-        g = JsePlatform.debugGlobals();
-        g.set("ctype", new FunctionCType());
-
-        ctype = (FunctionCType) g.get("ctype");
-    }
-
-    @Test
-    public void test() {
-        g.set("obj", LuaObjectValue.of(Dummy.thing));
-        LuaValue obj = g.get("obj");
-
-        // Make sure we're getting the right typename and function entries.
-        assertEquals("luaObjectThing", ctype.call(obj).checkjstring());
-
-        // something's wrong if these throw exceptions
-        obj.get("voidMethod").call(obj);
-        obj.get("intMethod").call(obj);
-        obj.get("objMethod").call(obj);
-        obj.get("objMethod").call(obj, obj);
-        obj.get("objMethod").call(obj, obj, obj);
-
-        // test add metamethod
-        assertEquals(LuaValue.NIL, obj.add(obj));
-
-        // test abstract failure
         try {
-            obj.get("blankMethod").call(obj);
+            a.get("abstractMethod").call(a);
         } catch(LuaError e) {
-            System.out.println("abstract method failed successfully");
-            // supposed to happen
+            // expected
+            a.set("abstractMethod", toFunc(() -> {
+                System.out.println("Abstract method implemented by Lua.");
+            }));
         }
-    }
 
+        // should't fail this time
+        a.get("abstractMethod").call(a);
+    }
 }
