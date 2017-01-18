@@ -65,7 +65,7 @@ public class LuaMesh {
      * Denotes enforcement of the first character in a name
      * being lowercased.
      */
-    public static boolean enforceFirstLower = true;
+    public static boolean enforceFirstLower = false;
     /**
      * Denotes enforcement of underscoring versus
      * camelcasing.
