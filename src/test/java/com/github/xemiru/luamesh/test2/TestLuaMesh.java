@@ -123,6 +123,7 @@ public class TestLuaMesh {
 
             // intMethod and override
             assertEquals(0, a.get("intMethod").call(a).checkint());
+            assertEquals(LuaValue.NIL, b.get("intMethod")); // name override erases this
             assertEquals(1, b.get("luaintMethod").call(b).checkint()); // override in TestB
 
             // add metamethod
