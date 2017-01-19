@@ -133,4 +133,5 @@ public MyObject madd(MyObject obj) {
 
 | Version | Notes |
 |:-:|:--|
-| 1.0     | Initial release. |
+| 1.0 | Initial release. |
+| 1.1 | Major bug fixes, Java-implemented Lua libraries |
