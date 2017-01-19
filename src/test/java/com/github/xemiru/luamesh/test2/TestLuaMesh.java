@@ -29,6 +29,8 @@ import static org.junit.Assert.assertNotEquals;
 
 import com.github.xemiru.luamesh.FunctionCType;
 import com.github.xemiru.luamesh.LuaMesh;
+import com.github.xemiru.luamesh.test.LibraryA;
+import com.github.xemiru.luamesh.test.LibraryB;
 import com.github.xemiru.luamesh.test.TestA;
 import com.github.xemiru.luamesh.test.TestB;
 import org.junit.Assert;
@@ -74,6 +76,8 @@ public class TestLuaMesh {
             // in order of inheritance
             LuaMesh.register("com.github.xemiru.luamesh.test.TestA");
             LuaMesh.register("com.github.xemiru.luamesh.test.TestB");
+            LuaMesh.register(LibraryA.class);
+            LuaMesh.register(LibraryB.class);
 
             try {
                 LuaMesh.init();
@@ -88,6 +92,8 @@ public class TestLuaMesh {
 
             g.set("a", of(new TestA()));
             g.set("b", of(new TestB()));
+            g.load(new LibraryA());
+            g.load(new LibraryB());
         }
     }
 
@@ -128,7 +134,7 @@ public class TestLuaMesh {
 
         try {
             a.get("abstractMethod").call(a);
-        } catch(LuaError e) {
+        } catch (LuaError e) {
             // expected
             a.set("abstractMethod", toFunc(() -> {
                 System.out.println("Abstract method implemented by Lua.");
@@ -137,5 +143,21 @@ public class TestLuaMesh {
 
         // should't fail this time
         a.get("abstractMethod").call(a);
+    }
+
+    @Test
+    public void libraries() {
+        LuaValue a = g.get("LibraryA");
+        LuaValue b = g.get("libB"); // b was name overriden
+
+        assertNotEquals(LuaValue.NIL, a);
+        assertNotEquals(LuaValue.NIL, b);
+
+        a.get("voidMethod").call();
+        assertEquals(LuaValue.NIL, b.get("voidMethod")); // should have been removed by name override
+        b.get("voidmethod").call();
+
+        a.get("intMethod").call();
+        b.get("intMethod").call();
     }
 }

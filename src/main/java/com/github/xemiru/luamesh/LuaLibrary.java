@@ -40,6 +40,10 @@ import java.util.Map;
  */
 public class LuaLibrary extends TwoArgFunction {
 
+    /**
+     * Small wrapper used so we don't need to store
+     * duplicate instances of method bindings.
+     */
     private class MethodBindDelegate extends VarArgFunction {
 
         private Object inst;
@@ -56,8 +60,11 @@ public class LuaLibrary extends TwoArgFunction {
         }
     }
 
-    private static Map<Class<?>, Map<String, LuaMethodBind>> libs;
-    private static Map<Class<?>, String> cnames;
+    private static Map<Class<?>, LibraryMeta> libs;
+
+    static {
+        libs = new HashMap<>();
+    }
 
     /**
      * Registers a {@link LuaLibrary} for usage.
@@ -68,11 +75,11 @@ public class LuaLibrary extends TwoArgFunction {
      * @throws Throwable if something goes wrong
      */
     static void register(Class<? extends LuaLibrary> libClass) throws Throwable {
-        if (!libs.containsKey(libClass)) {
+        if (libs.containsKey(libClass)) {
             return; // do nothing if we already have it
         }
 
-        Map<String, LuaMethodBind> funcs = new HashMap<>();
+        LibraryMeta meta = new LibraryMeta();
         Class<?> superr = libClass.getSuperclass();
         List<Class<?>> supers = new ArrayList<>();
         while (superr != Object.class) {
@@ -85,14 +92,15 @@ public class LuaLibrary extends TwoArgFunction {
 
         while (!supers.isEmpty()) {
             superr = supers.get(supers.size() - 1);
-            Map<String, LuaMethodBind> sfuncs = libs.get(superr);
-            if (sfuncs == null) {
+            LibraryMeta smeta = libs.get(superr);
+            if (smeta == null) {
                 throw new InvalidCoercionTargetException(String.format(
                     "Parent library %s of library %s has not been registered; could not inherit",
                     superr.getName(), libClass.getName()));
             }
 
-            funcs.putAll(sfuncs);
+            meta.getBinds().putAll(smeta.getBinds());
+            meta.getNames().putAll(smeta.getNames());
             supers.remove(superr);
         }
 
@@ -100,35 +108,45 @@ public class LuaLibrary extends TwoArgFunction {
             LuaType annot = m.getDeclaredAnnotation(LuaType.class);
 
             if (annot != null) {
-                funcs.put(LuaMeta.convertMethodName(m, annot.name().trim()), new LuaMethodBind(m));
+                String mName = m.getName();
+                String cName = LuaMeta.convertMethodName(m, annot.name().trim());
+                if (meta.getNames().containsKey(mName)) {
+                    meta.getBinds().remove(meta.getNames().get(mName));
+                }
+
+                meta.getNames().put(mName, cName);
+                meta.getBinds().put(cName, new LuaMethodBind(m));
             }
         }
 
         LuaType cannot = libClass.getDeclaredAnnotation(LuaType.class);
-        if (cannot != null) {
-            cnames.put(libClass, LuaMeta.convertClassName(libClass, cannot.name()));
+        if (cannot == null) {
+            throw new InvalidCoercionTargetException(String
+                .format("Library %s is not annotated with LuaType", libClass.getClass().getName()));
         }
 
-        libs.put(libClass, funcs);
+        meta.setName(LuaMeta.convertClassName(libClass, cannot.name()));
+        libs.put(libClass, meta);
     }
 
     @Override
     public LuaValue call(LuaValue modname, LuaValue env) {
         Class<?> me = this.getClass();
-        Map<String, LuaMethodBind> funcs = libs.get(me);
-        if (funcs == null) {
+        LibraryMeta meta = libs.get(me);
+        if (meta == null) {
             throw new InvalidCoercionTargetException(
                 String.format("Library %s not registered, cannot generate function table",
                     this.getClass().getName()));
         }
 
-        String name = cnames.get(me);
+        String name = meta.getName();
         LuaTable tab = new LuaTable();
         if (name == null) {
             name = LuaMeta.convertClassName(me, null);
         }
 
         env.set(name, tab);
+        Map<String, LuaMethodBind> funcs = meta.getBinds();
         funcs.keySet().forEach(key -> {
             tab.set(key, new MethodBindDelegate(this, funcs.get(key)));
         });

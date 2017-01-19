@@ -137,7 +137,7 @@ public class LuaMesh {
      * @param libClass the class of the LuaLibrary to
      *        register
      */
-    public static void registerLib(Class<? extends LuaLibrary> libClass) {
+    public static void register(Class<? extends LuaLibrary> libClass) {
         if (lclasses != null) {
             lclasses.add(libClass);
         }
