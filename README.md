@@ -92,9 +92,49 @@ public void abstractMethod() {
 }
 ```
 
-## LuaType annotation
+## Libraries
 
-[LuaType javadoc here.](https://xemiru.github.io/LuaMesh/latest/com/github/xemiru/luamesh/LuaType.html)
+Libraries are essentially the Java equivalent of Lua modules -- a table of functions. The only difference being that LuaMesh will not ensure that there is only a single instance ever of a library; that is up to the person writing the integration.
+
+The setup for libraries are exactly the same as annotated Lua-coercible classes, only that they are required to extend the LuaLibrary class. Libraries can then be created by using `LuaObjectValue.of(Object)`.
+
+```java
+package luamesh.is.ok.iguess;
+
+@LuaType
+public class MeshedLibrary extends LuaLibrary {
+
+    @LuaType
+    public void myMethod() {
+        System.out.println("Hello, world!");
+    }
+
+}
+```
+
+## Unidirectional Bindings
+
+By default, bindings created by classes annotated with the @LuaType annotation are bi-directional -- that is, the state of the Lua object's inherited functions affect how the Java object works and vice-versa. The default inherited Lua function calls the Java method, but when replaced, Java will instead call the Lua function. An exception is if the Java method is marked implementable, in which case the Java method has no implementation and will actually error if it does not have a Lua implementation when called.
+
+In cases where it is not possible to annotate the class with @LuaType to add Lua bindings, one can instead make a unidirectional binding. A unidirectional binding can only let Lua call to Java; the Java object has no awareness of a Lua implementation.
+
+A unidirectional binding can be made simply by registering it using `LuaMesh.register(Class, Function<String, String>)`. The metadata is generated automagically, and one can configure which methods are passed to Lua using the filter parameter. The target class can safely be loaded prior to calling LuaMesh.init(), as no injections take place.
+
+```
+LuaMesh.register(MyClass.class, name -> {
+    switch(name) {
+        case "methodA": return "functionA"; // rename the function
+        case "methodB": return null; // don't give the function to lua
+        default: return name; // pass all functions with their names as-is
+    }
+})
+```
+
+The filter parameter takes a function consuming the name of a candidate method to be given to a Lua object, and returning the new name of the function or null if it is not to be given to the object. The filter does not check for conflicts.
+
+After registering a unidirectional binding, Lua values for instances of the registered class can be generated as usual using LuaObjectValue.of(Object).
+
+## [LuaType annotation](https://xemiru.github.io/LuaMesh/latest/com/github/xemiru/luamesh/LuaType.html)
 
 ### Changing names
 
@@ -135,3 +175,4 @@ public MyObject madd(MyObject obj) {
 |:-:|:--|
 | 1.0 | Initial release. |
 | 1.1 | Major bug fixes, Java-implemented Lua libraries |
+| 1.2 | Unidirectional Lua bindings |
