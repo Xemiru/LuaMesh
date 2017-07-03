@@ -4,7 +4,7 @@ Mesh your Java objects into a Lua environment using LuaJ.
 
 ## Importing into your project
 
-The project can be retrieved as an artifact from the [Maven Central repository.](https://search.maven.org/#artifactdetails%7Ccom.github.xemiru%7Cluamesh%7C1.0%7Cjar)
+The project can be retrieved as an artifact from the [Maven Central repository.](https://search.maven.org/#artifactdetails%7Ccom.github.xemiru%7Cluamesh%7C1.2%7Cjar)
 
 #### Gradle
 ```groovy
@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    compile 'com.github.xemiru:luamesh:1.0'
+    compile 'com.github.xemiru:luamesh:1.2'
 }
 ```
 
@@ -22,7 +22,7 @@ dependencies {
 <dependency>
     <groupId>com.github.xemiru</groupId>
     <artifactId>luamesh</artifactId>
-    <version>1.0</version>
+    <version>1.2</version>
 </dependency>
 ```
 
