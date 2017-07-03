@@ -28,7 +28,7 @@ dependencies {
 
 ## Usage
 
-All documentation is available at [http://xemiru.github.io/LuaMesh/latest](http://xemiru.github.io/LuaMesh/latest).
+All Java documentation is available at [http://xemiru.github.io/LuaMesh/latest](http://xemiru.github.io/LuaMesh/latest).
 
 Need them for a specific version? Replace `latest` with the version you need. All documentation pages are in the [gh-pages branch](https://github.com/Xemiru/LuaMesh/tree/gh-pages).
 
@@ -120,7 +120,7 @@ In cases where it is not possible to annotate the class with @LuaType to add Lua
 
 A unidirectional binding can be made simply by registering it using `LuaMesh.register(Class, Function<String, String>)`. The metadata is generated automagically, and one can configure which methods are passed to Lua using the filter parameter. The target class can safely be loaded prior to calling LuaMesh.init(), as no injections take place.
 
-```
+```java
 LuaMesh.register(MyClass.class, name -> {
     switch(name) {
         case "methodA": return "functionA"; // rename the function
