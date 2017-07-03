@@ -23,25 +23,18 @@
  */
 package com.github.xemiru.luamesh.test;
 
-import com.github.xemiru.luamesh.LuaMesh;
 import com.github.xemiru.luamesh.LuaType;
 import com.github.xemiru.luamesh.LuaType.MetaEntry;
 
 @LuaType
 public class TestA {
 
-    public static void println(String msg) {
+    static void println(String msg) {
         System.out.println(msg);
     }
 
     // =========================================
     // method test
-
-    public void fuck(Object obj) {
-        LuaMesh.lua(this, "fuck", () -> {
-            System.out.println(obj);
-        }, obj);
-    }
 
     @LuaType
     public int intMethod() {
