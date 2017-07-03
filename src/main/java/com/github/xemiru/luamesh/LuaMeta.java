@@ -263,7 +263,8 @@ public class LuaMeta {
         // register methods
         LuaValue __index = this.metatable.get(LuaValue.INDEX);
         for(Method method : type.getDeclaredMethods()) {
-            String name = filter == null ? method.getName() : filter.apply(method.getName());
+            String mname = convertMethodName(method, null);
+            String name = filter == null ? mname : filter.apply(mname);
             if(name == null) { continue; }
 
             try {
