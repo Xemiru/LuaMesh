@@ -24,15 +24,14 @@
 package com.github.xemiru.luamesh.test2;
 
 import static com.github.xemiru.luamesh.LuaObjectValue.of;
+import static org.luaj.vm2.LuaValue.valueOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 import com.github.xemiru.luamesh.FunctionCType;
 import com.github.xemiru.luamesh.LuaMesh;
-import com.github.xemiru.luamesh.test.LibraryA;
-import com.github.xemiru.luamesh.test.LibraryB;
-import com.github.xemiru.luamesh.test.TestA;
-import com.github.xemiru.luamesh.test.TestB;
+import com.github.xemiru.luamesh.LuaObjectValue;
+import com.github.xemiru.luamesh.test.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,6 +46,8 @@ import org.luaj.vm2.lib.jse.JsePlatform;
 import java.util.function.Function;
 
 public class TestLuaMesh {
+
+    static void println(String str) { System.out.println(str); }
 
     static LuaFunction toFunc(Function<Varargs, Varargs> func) {
         return new VarArgFunction() {
@@ -78,6 +79,13 @@ public class TestLuaMesh {
             LuaMesh.register("com.github.xemiru.luamesh.test.TestB");
             LuaMesh.register(LibraryA.class);
             LuaMesh.register(LibraryB.class);
+            LuaMesh.register(TestC.class, name -> {
+                switch(name) {
+                    case "removed": return null;
+                    case "filteredJava": return "filteredLua";
+                    default: return name;
+                }
+            });
 
             try {
                 LuaMesh.init();
@@ -88,10 +96,11 @@ public class TestLuaMesh {
 
             g = JsePlatform.debugGlobals();
             g.set("ctype", new FunctionCType());
-            ctype = (FunctionCType) g.get("ctype");
+            ctype = g.get("ctype");
 
             g.set("a", of(new TestA()));
             g.set("b", of(new TestB()));
+            g.set("c", of(new TestC()));
             g.load(new LibraryA());
             g.load(new LibraryB());
         }
@@ -160,5 +169,36 @@ public class TestLuaMesh {
 
         a.get("intMethod").call();
         b.get("intMethod").call();
+    }
+
+    @Test
+    public void unidirectional() {
+        LuaValue c = g.get("c");
+
+        c.get("printStuff").call(c); // prints out "stuff"
+
+        // call TestC.add(int, int)
+        assertEquals(5, c.get("add").call(c, valueOf(2), valueOf(3)).checkint());
+
+        // was renamed to filteredLua by the filter
+        assertEquals(LuaValue.NIL, c.get("filteredJava"));
+        assertEquals(false, c.get("filteredLua").call(c).checkboolean());
+
+        // was removed by the filter
+        assertEquals(LuaValue.NIL, c.get("removed"));
+
+        // overwrite all the stuff
+        println("Overwriting Lua side and checking that Java notices nothing.");
+        LuaFunction func = toFunc(() -> {});
+        c.set("add", func);
+        c.set("printStuff", func);
+        c.set("filteredLua", func);
+
+        // java won't notice any changes, but lua will now call the overwritten funcs
+        TestC tc = ((LuaObjectValue<TestC>) c).getObject();
+
+        tc.printStuff();
+        assertEquals(5, tc.add(2, 3));
+        assertEquals(false, tc.filteredJava());
     }
 }

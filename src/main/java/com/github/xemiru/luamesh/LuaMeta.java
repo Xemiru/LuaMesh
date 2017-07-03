@@ -34,6 +34,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Contains metadata for a Lua-coercible Java type.
@@ -123,21 +125,14 @@ public class LuaMeta {
     private Map<String, String> names;
     private Set<String> meta;
 
-    public LuaMeta(LuaType rannot, Class<?> type) {
+    LuaMeta(Class<?> type, String name) {
         this.names = new HashMap<>();
         this.meta = new HashSet<>();
 
-        LuaType annot = rannot;
-        if (type.getDeclaredAnnotation(LuaType.class) != null) {
-            annot = type.getDeclaredAnnotation(LuaType.class);
-        }
-
         this.type = type;
+        this.name = name;
 
-        // perform name enforcement
-        this.name = convertClassName(type, annot.name());
-
-        // generate the metatable
+        // generate metatable
         this.metatable = new LuaTable();
 
         // first, get the parents' stuff
@@ -156,8 +151,8 @@ public class LuaMeta {
                 LuaMeta meta = LuaMesh.getMeta(p);
                 if (meta == null) {
                     throw new InvalidCoercionTargetException(String.format(
-                        "Parent class %s of class %s has not been registered; could not inherit",
-                        p.getName(), type.getName()));
+                            "Parent class %s of class %s has not been registered; could not inherit",
+                            p.getName(), type.getName()));
                 }
 
                 LuaUtil.clone(this.metatable, meta.metatable, true);
@@ -178,7 +173,24 @@ public class LuaMeta {
             __index = new LuaTable();
             this.metatable.set(LuaValue.INDEX, __index);
         }
+    }
 
+    /**
+     * Constructor generating two-way metadata based on
+     * {@link LuaType} annotations found within the given
+     * type's class.
+     *
+     * @param rannot the annotation of the class
+     * @param type the class to create metadata with
+     */
+    LuaMeta(LuaType rannot, Class<?> type) {
+        this(type, convertClassName(type, (
+                type.getDeclaredAnnotation(LuaType.class) != null
+                ? type.getDeclaredAnnotation(LuaType.class)
+                : rannot).name()));
+
+        // register annotated methods
+        LuaValue __index = this.metatable.get(LuaValue.INDEX);
         for (Method method : type.getDeclaredMethods()) {
             LuaType typeAnnot = method.getDeclaredAnnotation(LuaType.class);
 
@@ -224,6 +236,46 @@ public class LuaMeta {
                 }
             }
         }
+    }
+
+    /**
+     * Constructor generating one-way metadata for the
+     * methods contained within the given class.
+     *
+     * <p>The filter receives the names of candidate
+     * methods within the given class to be written to
+     * the Lua instance. It can return the same name, or
+     * a different name to rename the method in the Lua
+     * environment. It can also return null to signify
+     * that the candidate method should not be written to
+     * to the class's Lua counterpart.</p>
+     *
+     * <p>If the filter is null, all methods will be
+     * registered with their default names.</p>
+     *
+     * @param type the class to generate metadata with
+     * @param filter a filter determining which methods
+     *        should be accessible from the Lua instance
+     */
+    LuaMeta(Class<?> type, Function<String, String> filter) {
+        this(type, convertClassName(type, null));
+
+        // register methods
+        LuaValue __index = this.metatable.get(LuaValue.INDEX);
+        for(Method method : type.getDeclaredMethods()) {
+            String name = filter == null ? method.getName() : filter.apply(method.getName());
+            if(name == null) { continue; }
+
+            try {
+                method.setAccessible(true);
+                __index.set(name, new LuaMethodBind(method));
+                method.setAccessible(false);
+            } catch(IllegalAccessException e) {
+                // let it cause a crash, this isn't good
+                throw new RuntimeException(e);
+            }
+        }
+
     }
 
     /**

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -84,12 +85,14 @@ public class LuaMesh {
     private static Map<String, String> names;
     private static Map<Class<?>, LuaMeta> metas;
     private static List<String> classes;
+    private static Map<Class<?>, Function<String, String>> uclasses;
     private static List<Class<? extends LuaLibrary>> lclasses;
 
     static {
         metas = new HashMap<>();
         names = new HashMap<>();
         classes = new ArrayList<>();
+        uclasses = new HashMap<>();
         lclasses = new ArrayList<>();
     }
 
@@ -98,29 +101,35 @@ public class LuaMesh {
      * Lua-coercible classes.
      * 
      * @param clazz the class to register
+     * @param filter an optional filter
      * 
      * @return the LuaMeta returned, or null if not found
      */
-    static LuaMeta registerMeta(Class<?> clazz) {
+    static LuaMeta registerMeta(Class<?> clazz, Function<String, String> filter) {
         if (metas.containsKey(clazz)) {
             return metas.get(clazz);
         }
 
         LuaType typeAnnot = clazz.getAnnotation(LuaType.class);
-        if (typeAnnot != null) {
-            LuaMeta meta = new LuaMeta(typeAnnot, clazz);
-            metas.put(clazz, meta);
-            names.put(clazz.getName(), meta.getName());
-
-            return meta;
-        }
-
-        return null;
+        LuaMeta meta = typeAnnot == null ? new LuaMeta(clazz, filter) : new LuaMeta(typeAnnot, clazz);
+        metas.put(clazz, meta);
+        names.put(clazz.getName(), meta.getName());
+        return meta;
     }
 
     /**
      * Registers a class, referred to by its fully-qualified
      * name, as Lua-coercible.
+     *
+     * <p>This should be used for classes that have a
+     * {@link LuaType} annotation and are therefore
+     * bi-directional (Java method calls can call Lua
+     * functions and vice-versa).</p>
+     *
+     * <p>Classes with a LuaType annotation cannot be loaded
+     * before the init() method is called; one should
+     * manually type the qualified name passed to this
+     * method.</p>
      * 
      * @param clazz the class to register, by its qualified
      *        name (e.g. java.lang.Integer)
@@ -128,6 +137,41 @@ public class LuaMesh {
     public static void register(String clazz) {
         if (classes != null) {
             classes.add(clazz);
+        }
+    }
+
+    /**
+     * Registers a class, referred to by its fully-qualified
+     * name, as Lua-coercible.
+     *
+     * <p>This should be used for classes that do not have a
+     * {@link LuaType} annotation and are therefore unidirectional
+     * (Lua can call Java methods, but Java can't call Lua's).</p>
+     *
+     * <p>Classes without a LuaType annotation can safely be loaded
+     * prior to the init() method, as no transformations occur for
+     * these classes. One can simply use Class.getName() to pass to
+     * this method.</p>
+     *
+     * <p>The filter receives the names of candidate
+     * methods within the given class to be written to
+     * the Lua instance. It can return the same name, or
+     * a different name to rename the method in the Lua
+     * environment. It can also return null to signify
+     * that the candidate method should not be written to
+     * to the class's Lua counterpart.</p>
+     *
+     * <p>If the filter is null, all methods will be
+     * registered with their default names.</p>
+     *
+     * @param clazz the class to register, by its qualified
+     *        name (e.g. java.lang.Integer)
+     * @param filter a filter determining which methods
+     *        should be accessible from the Lua instance
+     */
+    public static void register(Class<?> clazz, Function<String, String> filter) {
+        if (uclasses != null) {
+            uclasses.put(clazz, filter);
         }
     }
 
@@ -166,7 +210,11 @@ public class LuaMesh {
                 }
 
                 for (String str : classes) {
-                    registerMeta(Class.forName(str, true, ClassLoader.getSystemClassLoader()));
+                    registerMeta(Class.forName(str, true, ClassLoader.getSystemClassLoader()), null);
+                }
+
+                for (Class<?> clazz : uclasses.keySet()) {
+                    registerMeta(clazz, uclasses.get(clazz));
                 }
 
                 for(Class<? extends LuaLibrary> lclass : lclasses) {
@@ -174,6 +222,7 @@ public class LuaMesh {
                 }
             } finally {
                 classes = null;
+                uclasses = null;
                 lclasses = null;
             }
         }
