@@ -132,7 +132,7 @@ public class LuaUtil {
         } else if (obj.isboolean()) {
             return obj.checkboolean();
         } else if (obj.isstring()) {
-            return obj.checkstring();
+            return obj.checkjstring();
         } else {
             return obj;
         }
