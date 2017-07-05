@@ -38,7 +38,7 @@ import java.lang.annotation.Target;
  * <p>Target classes and/or members must be public.</p>
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target({ElementType.TYPE, ElementType.METHOD, ElementType.FIELD})
 public @interface LuaType {
 
     /**
