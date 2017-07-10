@@ -37,13 +37,13 @@ import java.lang.reflect.Modifier;
  * Utility class responsible for calling Java methods from
  * within Lua.
  */
-public class LuaMethodBind extends VarArgFunction {
+public class LuaMethodBind extends VarArgFunction implements Cloneable {
 
     /**
      * Translates errors from Java into errors for Lua.
-     * 
+     *
      * @param ex the exception to translate
-     * 
+     *
      * @return the error message to pass
      */
     static String translateException(Throwable ex) {
@@ -53,7 +53,7 @@ public class LuaMethodBind extends VarArgFunction {
             String expected = msg[4];
 
             return String.format("bad argument: %s expected, got %s", LuaMesh.getLuaName(expected),
-                LuaMesh.getLuaName(given));
+                    LuaMesh.getLuaName(given));
         }
 
         String msg = ex.getClass().getName();
@@ -64,12 +64,17 @@ public class LuaMethodBind extends VarArgFunction {
     private boolean[] numtypes;
     private int paramCount;
     private boolean staticc;
+    protected Object instance;
+
+    private LuaMethodBind() {
+    }
 
     public LuaMethodBind(Method method) throws IllegalAccessException {
         this.mh = MethodHandles.lookup().unreflect(method);
         this.staticc = Modifier.isStatic(method.getModifiers());
         Class<?>[] types = method.getParameterTypes();
         this.paramCount = types.length;
+        this.instance = null;
 
         this.numtypes = new boolean[this.paramCount];
         for (int i = 0; i < types.length; i++) {
@@ -86,12 +91,12 @@ public class LuaMethodBind extends VarArgFunction {
         // gather parameters
         Object[] params = new Object[staticc ? paramCount : paramCount + 1];
         for (int i = 0; i < params.length; i++) {
-            LuaValue v = args.arg(i + 1);
-            if(i == 0 && obj != null) {
+            if (!staticc && i == 0 && obj != null) {
                 params[0] = obj;
                 continue;
             }
 
+            LuaValue v = args.arg(obj == null || staticc ? i + 1 : i);
             if (v.isnil()) {
                 params[i] = null;
             } else {
@@ -116,15 +121,26 @@ public class LuaMethodBind extends VarArgFunction {
                 throw (LuaError) e; // ignore it
             }
 
-            System.err.print("Exception occurred while executing Java method from Lua: ");
-            e.printStackTrace();
             throw new LuaError(translateException(e));
         }
     }
 
     @Override
     public Varargs invoke(Varargs args) {
-        return this.invoke((Object) null, args);
+        return this.invoke(instance, args);
+    }
+
+    @Override
+    public LuaMethodBind clone() {
+        LuaMethodBind lmb = new LuaMethodBind();
+
+        lmb.mh = this.mh;
+        lmb.numtypes = this.numtypes;
+        lmb.paramCount = this.paramCount;
+        lmb.staticc = this.staticc;
+        lmb.instance = this.instance;
+
+        return lmb;
     }
 
 }
