@@ -32,17 +32,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
  * Primary class for LuaMesh.
- * 
+ *
  * <p>Public static variables within this class configure
  * behaviors of name enforcement with Lua-coercible types,
  * when translated into a Lua environment. These must be set
  * before registration of any Lua-coercible classes.</p>
- * 
+ *
  * <p>LuaMesh provides an extra function for receiving
  * typenames of Java objects within Lua. See
  * {@link FunctionCType}.</p>
@@ -51,9 +52,9 @@ public class LuaMesh {
 
     /**
      * Name enforcement option.
-     * 
-     * <ul> <li>1 - Class names only.</li> <li>2 - Method
-     * names only.</li> <li>3 - Class and method names.</li>
+     *
+     * <ul> <li>1 - Class names only.</li> <li>2 - Member
+     * names only.</li> <li>3 - Class and member names.</li>
      * </ul>
      */
     public static short enforcementOption = 1;
@@ -82,27 +83,26 @@ public class LuaMesh {
      */
     public static boolean useTypeMetakey = true;
 
+    public static Consumer<String> debug = null;
     private static Map<String, String> names;
     private static Map<Class<?>, LuaMeta> metas;
     private static List<String> classes;
     private static Map<Class<?>, Function<String, String>> uclasses;
-    private static List<Class<? extends LuaLibrary>> lclasses;
 
     static {
         metas = new HashMap<>();
         names = new HashMap<>();
         classes = new ArrayList<>();
         uclasses = new HashMap<>();
-        lclasses = new ArrayList<>();
     }
 
     /**
      * Internal method. Registers the metadata for
      * Lua-coercible classes.
-     * 
+     *
      * @param clazz the class to register
      * @param filter an optional filter
-     * 
+     *
      * @return the LuaMeta returned, or null if not found
      */
     static LuaMeta registerMeta(Class<?> clazz, Function<String, String> filter) {
@@ -115,6 +115,10 @@ public class LuaMesh {
         metas.put(clazz, meta);
         names.put(clazz.getName(), meta.getName());
         return meta;
+    }
+
+    public static void debug(String message) {
+        if(LuaMesh.debug != null) debug.accept(message);
     }
 
     /**
@@ -130,7 +134,7 @@ public class LuaMesh {
      * before the init() method is called; one should
      * manually type the qualified name passed to this
      * method.</p>
-     * 
+     *
      * @param clazz the class to register, by its qualified
      *        name (e.g. java.lang.Integer)
      */
@@ -176,30 +180,20 @@ public class LuaMesh {
     }
 
     /**
-     * Registers a {@link LuaLibrary} for usage.
-     * 
-     * @param libClass the class of the LuaLibrary to
-     *        register
-     */
-    public static void register(Class<? extends LuaLibrary> libClass) {
-        if (lclasses != null) {
-            lclasses.add(libClass);
-        }
-    }
-
-    /**
      * Initializes the classes registered to be loaded by
      * LuaMesh.
-     * 
+     *
      * <p>This method can only be called once, future calls
      * result in a no-op.</p>
-     * 
+     *
      * @throws Throwable if something goes wrong :^)
      */
     public static void init() throws Throwable {
         if (classes != null) {
             try {
                 for (String str : classes) {
+                    debug("applying transformations to class " + str);
+
                     String qname = str.replaceAll("\\.", "/");
                     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                     MeshTransformer mt = new MeshTransformer(cw);
@@ -210,20 +204,17 @@ public class LuaMesh {
                 }
 
                 for (String str : classes) {
+                    debug("registering meta for class " + str);
                     registerMeta(Class.forName(str, true, ClassLoader.getSystemClassLoader()), null);
                 }
 
                 for (Class<?> clazz : uclasses.keySet()) {
+                    debug("registering meta for class " + clazz.getName());
                     registerMeta(clazz, uclasses.get(clazz));
-                }
-
-                for(Class<? extends LuaLibrary> lclass : lclasses) {
-                    LuaLibrary.register(lclass);
                 }
             } finally {
                 classes = null;
                 uclasses = null;
-                lclasses = null;
             }
         }
     }
@@ -233,14 +224,14 @@ public class LuaMesh {
      * on the given object's Lua wrapper if it exists,
      * otherwise execute and provide the result of the given
      * supplier.
-     * 
+     *
      * @param <T> the return type of the method
      * @param obj the object performing the method
      * @param methodName the name of the Java method
      * @param sup the supplier to default to
      * @param args the parameters passed to the method, to
      *        give to the Lua function
-     * 
+     *
      * @return the return value of the Lua or Java function
      */
     @SuppressWarnings("unchecked")
@@ -260,7 +251,7 @@ public class LuaMesh {
      * on the given object's Lua wrapper if it exists,
      * otherwise execute and provide the result of the given
      * runnable.
-     * 
+     *
      * @param obj the object performing the method
      * @param methodName the name of the Java method
      * @param sup the runnable to default to
@@ -294,7 +285,6 @@ public class LuaMesh {
 
         // the function didn't exist in lua
         if (sup == null) {
-            System.out.println("method " + methodName + " is abstract");
             // our java method didnt exist either
             // scream
             throw new LuaError("bad value: " + luaName + " is expected to be a function");
@@ -310,10 +300,10 @@ public class LuaMesh {
 
     /**
      * Returns the Lua name of the given class.
-     * 
+     *
      * @param clazz the class to get the name for
-     * 
-     * @return the Lua name of clazz, or "nil" if null
+     *
+     * @return the Lua name of clazz, or "nil" if passed null
      */
     public static String getLuaName(Class<?> clazz) {
         return getLuaName(clazz == null ? null : clazz.getName());
@@ -322,12 +312,12 @@ public class LuaMesh {
     /**
      * Returns the Lua name of the given class name, in the
      * format returned by {@link Class#getName()}.
-     * 
+     *
      * <p>If the given class has no associated name, this
      * instead returns {@code "<unknown type>"}.</p>
-     * 
+     *
      * @param name the class name to get the name for
-     * 
+     *
      * @return the Lua name of the given class, or "nil" if
      *         passed null
      */
@@ -354,9 +344,9 @@ public class LuaMesh {
     /**
      * Retrieves the {@link LuaMeta} of a class, or null if
      * not registered as Lua-coercible.
-     * 
+     *
      * @param clazz the class to retrieve LuaMeta for
-     * 
+     *
      * @return clazz's LuaMeta, or null if not registered
      */
     public static LuaMeta getMeta(Class<?> clazz) {
