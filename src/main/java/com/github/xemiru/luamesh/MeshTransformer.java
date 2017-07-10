@@ -23,27 +23,6 @@
  */
 package com.github.xemiru.luamesh;
 
-import static org.objectweb.asm.Opcodes.AASTORE;
-import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
-import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
-import static org.objectweb.asm.Opcodes.ACONST_NULL;
-import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ANEWARRAY;
-import static org.objectweb.asm.Opcodes.ARETURN;
-import static org.objectweb.asm.Opcodes.ASM5;
-import static org.objectweb.asm.Opcodes.ASTORE;
-import static org.objectweb.asm.Opcodes.CHECKCAST;
-import static org.objectweb.asm.Opcodes.DRETURN;
-import static org.objectweb.asm.Opcodes.DUP;
-import static org.objectweb.asm.Opcodes.FRETURN;
-import static org.objectweb.asm.Opcodes.H_INVOKESPECIAL;
-import static org.objectweb.asm.Opcodes.H_INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.IRETURN;
-import static org.objectweb.asm.Opcodes.LRETURN;
-import static org.objectweb.asm.Opcodes.RETURN;
-
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Handle;
@@ -56,6 +35,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.objectweb.asm.Opcodes.*;
 
 /**
  * Handles bytecode transformation of meshed classes
@@ -95,15 +76,15 @@ public class MeshTransformer extends ClassVisitor {
 
         // Method descriptor of the supplier lua method in LuaMesh.
         private static final String LSUP_DESC =
-            "(Ljava/lang/Object;Ljava/lang/String;Ljava/util/function/Supplier;[Ljava/lang/Object;)Ljava/lang/Object;";
+                "(Ljava/lang/Object;Ljava/lang/String;Ljava/util/function/Supplier;[Ljava/lang/Object;)Ljava/lang/Object;";
         // Method descriptor of the runnable lua method in LuaMesh.
         private static final String LRUN_DESC =
-            "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Runnable;[Ljava/lang/Object;)V";
+                "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Runnable;[Ljava/lang/Object;)V";
         private static final String LAMBDA_PREFIX = "lambda$luam_";
         // Single reference handle to the lambda bootstrap method; we don't need to remake it over and over.
         private static final Handle LAMBDA_BS = new Handle(H_INVOKESTATIC,
-            "java/lang/invoke/LambdaMetafactory", "metafactory",
-            "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;");
+                "java/lang/invoke/LambdaMetafactory", "metafactory",
+                "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;");
 
         private ClassVisitor cv;
 
@@ -114,7 +95,7 @@ public class MeshTransformer extends ClassVisitor {
         private boolean lua;
 
         public MethodTransformer(ClassVisitor cv, String cname, int access, String name,
-            String desc, String signature, String[] exceptions) {
+                                 String desc, String signature, String[] exceptions) {
             // let stuff before the main code get passed to the delegate classvisitor
             super(ASM5, cv.visitMethod(access, name, desc, signature, exceptions));
             this.av = null;
@@ -153,9 +134,17 @@ public class MeshTransformer extends ClassVisitor {
 
                 String mparams = m.group(1);
                 String lam = LAMBDA_PREFIX + name;
+                Type[] paramTypes = Type.getArgumentTypes(desc);
                 Type retType = Type.getReturnType(desc);
-                int pCount = Type.getArgumentTypes(desc).length;
+                int pCount = paramTypes.length; // use when related to the local/stack frames
                 boolean run = retType == null || retType.getDescriptor().equals("V"); // void method means runnable, otherwise supplier
+
+                // account for doubles
+                for(Type t : paramTypes) {
+                    if(t.getDescriptor().equals("D")) {
+                        pCount += 1;
+                    }
+                }
 
                 // replaces the original method
                 mv.visitCode();
@@ -166,22 +155,29 @@ public class MeshTransformer extends ClassVisitor {
                     mv.visitInsn(ACONST_NULL);
                 } else {
                     // invokedynamic params
-                    for (int i = 0; i <= pCount; i++) {
-                        mv.visitVarInsn(ALOAD, i);
+                    int offset = 0;
+                    for (int i = 0; i <= paramTypes.length; i++) {
+                        if(i >= 1) {
+                            String vd = paramTypes[i - 1].getDescriptor();
+                            loadVar(mv, vd, i + offset, false);
+                            if(vd.equals("D")) offset += 1;
+                        } else {
+                            mv.visitVarInsn(ALOAD, i);
+                        }
                     }
 
                     // get our sup by
                     String lparams = "(L" + cname + ";" + mparams.substring(1);
                     if (run) { // generating a runnable
                         mv.visitInvokeDynamicInsn("run", lparams + "Ljava/lang/Runnable;",
-                            LAMBDA_BS, Type.getType("()V"),
-                            new Handle(H_INVOKESPECIAL, cname, lam, desc, false),
-                            Type.getType("()V"));
+                                LAMBDA_BS, Type.getType("()V"),
+                                new Handle(H_INVOKESPECIAL, cname, lam, desc, false),
+                                Type.getType("()V"));
                     } else { // generating a supplier
                         mv.visitInvokeDynamicInsn("get", lparams + "Ljava/util/function/Supplier;",
-                            LAMBDA_BS, Type.getType("()Ljava/lang/Object;"),
-                            new Handle(H_INVOKESPECIAL, cname, lam, desc, false),
-                            Type.getType("()Ljava/lang/Object;"));
+                                LAMBDA_BS, Type.getType("()Ljava/lang/Object;"),
+                                new Handle(H_INVOKESPECIAL, cname, lam, desc, false),
+                                Type.getType("()Ljava/lang/Object;"));
                     }
                 }
 
@@ -193,18 +189,23 @@ public class MeshTransformer extends ClassVisitor {
                 mv.visitVarInsn(ALOAD, pCount + 1); // func obj
 
                 // add our method's parameters
-                mv.visitLdcInsn(pCount);
+                mv.visitLdcInsn(paramTypes.length);
                 mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
-                for (int i = 0; i < pCount; i++) {
-                    mv.visitInsn(DUP);
-                    mv.visitLdcInsn(i);
-                    mv.visitVarInsn(ALOAD, i + 1);
-                    mv.visitInsn(AASTORE);
+                int offset = 0;
+                for (int i = 0; i < paramTypes.length; i++) {
+                    mv.visitInsn(DUP); // the array to put into
+                    mv.visitLdcInsn(i); // the index of the next parameter
+
+                    String vd = paramTypes[i].getDescriptor();
+                    loadVar(mv, vd, i + 1 + offset, true);
+                    if(vd.equals("D")) offset += 1;
+
+                    mv.visitInsn(AASTORE); // store
                 }
 
                 // invoke LuaMesh's lua
                 mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(LuaMesh.class), "lua",
-                    run ? LRUN_DESC : LSUP_DESC, false);
+                        run ? LRUN_DESC : LSUP_DESC, false);
 
                 // return
                 if (run) {
@@ -225,7 +226,7 @@ public class MeshTransformer extends ClassVisitor {
                     }
 
                     // correctly cast into the right object type
-                    if (ch == 'L') {
+                    if (ch == 'L' || ch == '[') {
                         iname = retType.getInternalName();
                         opcode = ARETURN;
                     } else {
@@ -234,7 +235,7 @@ public class MeshTransformer extends ClassVisitor {
 
                     mv.visitTypeInsn(CHECKCAST, iname);
 
-                    if (ch != 'L') {
+                    if (ch != 'L' && ch != '[') {
                         // make sure primitive return methods get their primitive return value
                         String prim = iname.split(Pattern.quote("/"))[2].toLowerCase();
                         if (prim.equals("integer")) {
@@ -255,7 +256,7 @@ public class MeshTransformer extends ClassVisitor {
 
                 // let the original method get turned into our lambda method
                 this.mv = cv.visitMethod(ACC_PRIVATE + ACC_SYNTHETIC, lam, desc,
-                    signature, exceptions);
+                        signature, exceptions);
             }
 
             super.visitCode();
@@ -271,7 +272,7 @@ public class MeshTransformer extends ClassVisitor {
         Method m = null;
         try {
             m = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class,
-                int.class, int.class);
+                    int.class, int.class);
             m.setAccessible(true);
         } catch (Throwable e) {
             // this isn't good; we can't perform our injection
@@ -298,7 +299,7 @@ public class MeshTransformer extends ClassVisitor {
     /**
      * Creates a new class of the given qualified name, with
      * the instructions of the provided bytecode.
-     * 
+     *
      * @param name the qualified Java name of the class to
      *        create (e.g. java.lang.Integer)
      * @param code the bytecode to use
@@ -309,12 +310,52 @@ public class MeshTransformer extends ClassVisitor {
         } catch (InvocationTargetException e) {
             if (e.getCause() != null && e.getCause() instanceof LinkageError) {
                 IllegalStateException ise = new IllegalStateException(
-                    "Cannot inject into a class that's already been loaded (avoid referencing the classes in any form before calling LuaMesh.init())");
+                        "Cannot inject into a class that's already been loaded (avoid referencing the classes in any form before calling LuaMesh.init())");
                 ise.initCause(e);
                 throw ise;
             }
         } catch (Throwable e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static void loadVar(MethodVisitor mv, String descriptor, int lindex, boolean box) {
+        switch(descriptor) {
+            case "Z": // boolean
+                mv.visitVarInsn(ILOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
+                break;
+            case "B": // byte
+                mv.visitVarInsn(ILOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Byte", "valueOf", "(B)Ljava/lang/Byte;", false);
+                break;
+            case "C": // char
+                mv.visitVarInsn(ILOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Character", "valueOf", "(C)Ljava/lang/Character;", false);
+                break;
+            case "D": // double
+                mv.visitVarInsn(DLOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+                break;
+            case "F": // float
+                mv.visitVarInsn(FLOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
+                break;
+            case "I": // int
+                mv.visitVarInsn(ILOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+                break;
+            case "J": // long
+                mv.visitVarInsn(LLOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
+                break;
+            case "S": // short
+                mv.visitVarInsn(ILOAD, lindex);
+                if(box) mv.visitMethodInsn(INVOKESTATIC, "java/lang/Short", "valueOf", "(S)Ljava/lang/Short;", false);
+                break;
+            default:
+                mv.visitVarInsn(ALOAD, lindex);
+                break;
         }
     }
 
@@ -329,7 +370,7 @@ public class MeshTransformer extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName,
-        String[] interfaces) {
+                      String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
         // harvest the name
         this.cname = name;
@@ -347,7 +388,7 @@ public class MeshTransformer extends ClassVisitor {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature,
-        String[] exceptions) {
+                                     String[] exceptions) {
         // transform our methods
         return new MethodTransformer(this.cv, cname, access, name, desc, signature, exceptions);
     }
@@ -365,7 +406,7 @@ public class MeshTransformer extends ClassVisitor {
             // |_____/ \_____|_|  \_\______/_/    \_\_|  |_|
 
             throw new InvalidCoercionTargetException(
-                "class " + cname + " cannot be transformed: not annotated with LuaType");
+                    "class " + cname + " cannot be transformed: not annotated with LuaType");
         }
     }
 }
