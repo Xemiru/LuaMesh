@@ -23,6 +23,8 @@
  */
 package com.github.xemiru.luamesh;
 
+import static org.luaj.vm2.LuaValue.*;
+
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -138,6 +140,20 @@ public class LuaUtil {
         }
     }
 
+    public static Object toJava(LuaValue obj, Class<?> targetClass) {
+        switch(targetClass.getSimpleName()) {
+            case "Long": return (long) obj.checkint();
+            case "Integer": return obj.checkint();
+            case "Short": return (short) obj.checkint();
+            case "Double": return obj.checkdouble();
+            case "Float": return obj.checknumber().tofloat();
+            case "Boolean": return obj.checkboolean();
+            case "Byte": return (byte) obj.checkint();
+            case "Character": return (char) obj.checkint();
+            default: return toJava(obj, targetClass.getSimpleName().equals("Float"));
+        }
+    }
+
     /**
      * Converts the provided Java object into its
      * corresponding Lua object.
@@ -174,6 +190,14 @@ public class LuaUtil {
                 return LuaValue.valueOf((boolean) obj);
             } else if (obj instanceof String) {
                 return LuaValue.valueOf((String) obj);
+            } else if(obj instanceof Byte) {
+                return LuaValue.valueOf((byte) obj);
+            } else if(obj instanceof Character) {
+                return LuaValue.valueOf((char) obj);
+            } else if(obj instanceof Long) {
+                return LuaValue.valueOf((long) obj);
+            } else if(obj instanceof Short) {
+                return LuaValue.valueOf((short) obj);
             } else {
                 return LuaObjectValue.of(obj);
             }
@@ -210,5 +234,23 @@ public class LuaUtil {
         iterate(tab, (k, v) -> {
             System.out.println(k.tojstring() + ": " + v.tojstring());
         });
+    }
+
+    public static Object box(Object obj) {
+        if(obj.getClass().isPrimitive()) {
+            System.out.println("get box'd");
+            switch(obj.getClass().getName()) {
+                case "byte": return Byte.valueOf((byte) obj);
+                case "float": return Float.valueOf((float) obj);
+                case "double": return Double.valueOf((double) obj);
+                case "short": return Short.valueOf((short) obj);
+                case "int": return Integer.valueOf((int) obj);
+                case "long": return Long.valueOf((long) obj);
+                case "boolean": return Boolean.valueOf((boolean) obj);
+                case "char": return Character.valueOf((char) obj);
+            }
+        }
+
+        return obj;
     }
 }

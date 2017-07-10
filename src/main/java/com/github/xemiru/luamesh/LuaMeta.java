@@ -23,6 +23,8 @@
  */
 package com.github.xemiru.luamesh;
 
+import static com.github.xemiru.luamesh.LuaMesh.debug;
+
 import com.github.xemiru.luamesh.LuaType.MetaEntry;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
@@ -179,6 +181,14 @@ public class LuaMeta {
         }
     }
 
+    private String getKey(String value) {
+        for(String key : this.names.keySet()) {
+            if(this.names.get(key).equals(value)) return key;
+        }
+
+        return null;
+    }
+
     /**
      * Constructor generating two-way metadata based on
      * {@link LuaType} annotations found within the given
@@ -202,16 +212,6 @@ public class LuaMeta {
             if (typeAnnot != null) {
                 String mName = method.getName();
 
-                // in case of override
-                if (this.names.containsKey(mName)) {
-                    if (typeAnnot.entry() != MetaEntry.INDEX) {
-                        this.metatable.set(typeAnnot.entry().getKey(), LuaValue.NIL);
-                        this.meta.remove(mName);
-                    } else {
-                        __index.set(this.names.get(mName), LuaValue.NIL);
-                    }
-                }
-
                 // apply the name override if its there
                 // perform name enforcement
                 String aName = typeAnnot.name().trim();
@@ -219,6 +219,17 @@ public class LuaMeta {
                 // check if we need to replace, in case of override
                 if (!aName.isEmpty() || !this.names.containsKey(mName)) {
                     aName = convertMemberName(method, aName);
+                }
+
+                // in case of override
+                if (this.names.containsValue(aName)) {
+                    if (typeAnnot.entry() != MetaEntry.INDEX) {
+                        this.metatable.set(typeAnnot.entry().getKey(), LuaValue.NIL);
+                        this.meta.remove(getKey(aName));
+                        this.names.remove(getKey(aName)); // last, otherwise getKey doesn't work
+                    } else {
+                        __index.set(aName, LuaValue.NIL);
+                    }
                 }
 
                 try {
@@ -247,20 +258,6 @@ public class LuaMeta {
                 field.setAccessible(true); // for later
                 String fName = field.getName();
 
-                // in case of override
-                if(this.names.containsKey(fName)) {
-                    if(!this.fields.containsKey(this.names.get(fName))) {
-                        continue; // don't replace a method
-                    }
-
-                    if(typeAnnot.entry() != MetaEntry.INDEX) {
-                        this.metatable.set(typeAnnot.entry().getKey(), LuaValue.NIL);
-                        this.meta.remove(fName);
-                    } else {
-                        __index.set(this.names.get(fName), LuaValue.NIL);
-                    }
-                }
-
                 // perform name enforcement
                 String aName = typeAnnot.name().trim();
 
@@ -269,9 +266,28 @@ public class LuaMeta {
                     aName = convertMemberName(field, aName);
                 }
 
+                // in case of override
+                if(this.names.containsValue(aName)) {
+                    if(!this.fields.containsKey(aName)) {
+                        debug(String.format("field %s in class %s was not linked in favor of existing method of the same Lua name",
+                                aName, type.getName()));
+                        continue; // don't replace a method
+                    }
+
+                    if(typeAnnot.entry() != MetaEntry.INDEX) {
+                        this.metatable.set(typeAnnot.entry().getKey(), LuaValue.NIL);
+                        this.meta.remove(getKey(aName));
+                        this.names.remove(getKey(aName));
+                    } else {
+                        __index.set(aName, LuaValue.NIL);
+                    }
+                }
+
                 this.fields.put(aName, field);
                 this.names.put(fName, aName);
                 this.meta.add(fName);
+
+                debug(String.format("field %s in class %s linked with Lua name %s", fName, type.getName(), aName));
             }
         }
     }

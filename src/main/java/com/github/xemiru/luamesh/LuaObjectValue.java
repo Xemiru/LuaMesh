@@ -31,6 +31,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.function.Function;
 
 /**
  * Generic container for Java objects to be passable as Lua
@@ -155,6 +156,49 @@ public class LuaObjectValue<T> extends LuaTable {
         return this.meta;
     }
 
+    /**
+     * Converts this LuaObjectValue into a library format; that is,
+     * functions no longer require a self-reference to function and
+     * can simply be called normally.
+     *
+     * <p>The original metatable is removed and replaced with a new
+     * table that satisfies the library format. The old metatable
+     * is shallowly-cloned. __index is also shallowly cloned. All
+     * instances of a {@link LuaMethodBind} are copied and modified
+     * to support the library format. The original metatable can
+     * still be found in {@link #getMeta()}.</p>
+     *
+     * @return a library version of this LuaObjectValue
+     */
+    public LuaObjectValue<T> toLibrary() {
+        LuaTable mt = new LuaTable();
+        LuaTable __index = new LuaTable();
+
+        Function<LuaValue, LuaValue> convert = v -> {
+            if(v instanceof LuaMethodBind) {
+                LuaMethodBind lmb = ((LuaMethodBind) v).clone();
+                lmb.instance = this.ref;
+                return lmb;
+            } else {
+                return v;
+            }
+        };
+
+        LuaUtil.iterate(this.meta.getMetatable(), (k, v) -> {
+            if(v.istable() && k.tojstring().equals("__index")) {
+                LuaUtil.iterate(v.checktable(), (kk, vv) -> {
+                    __index.set(kk, convert.apply(vv));
+                });
+            } else {
+                mt.set(k, convert.apply(v));
+            }
+        });
+
+        mt.set(LuaValue.INDEX, __index);
+        this.setmetatable(mt);
+        return this;
+    }
+
     // ---------------- java/lua field sync ----------------
 
     // if IllegalAccessExceptions happen, just rte it and cause a crash
@@ -178,7 +222,9 @@ public class LuaObjectValue<T> extends LuaTable {
     public void rawset(LuaValue key, LuaValue value) {
         if(key.isstring() && this.meta.fields.containsKey(key.checkjstring())) {
             try {
-                Object jvalue = LuaUtil.toJava(value, false);
+                Field f = field(key.checkjstring());
+                Object jvalue = LuaUtil.toJava(value, fromPrimitive(f.getType()));
+
                 setField(ref, key.checkjstring(), jvalue);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
@@ -195,7 +241,7 @@ public class LuaObjectValue<T> extends LuaTable {
     private void initializeFields() {
         try {
             for (String luaName : this.meta.fields.keySet()) {
-                this.set(luaName, of(getField(ref, luaName)));
+                this.set(luaName, LuaUtil.toLua(getField(ref, luaName)));
             }
         } catch(IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -233,25 +279,36 @@ public class LuaObjectValue<T> extends LuaTable {
             if (ft.isPrimitive()) {
                 if (ft == boolean.class) {
                     f.set(obj, false);
+                } else if(ft == byte.class) {
+                    f.set(obj, 0x00);
+                } else if(ft == char.class) {
+                    f.set(obj, '\u0000');
+                } else if(ft == short.class) {
+                    f.set(obj, (short) 0);
                 } else if (ft == int.class) {
                     f.set(obj, 0);
+                } else if (ft == long.class) {
+                    f.set(obj, (long) 0);
+                } else if (ft == float.class) {
+                    f.set(obj, 0.0F);
                 } else if (ft == double.class) {
                     f.set(obj, 0.0D);
                 }
             } else {
                 f.set(obj, null);
             }
-        } else if(fromPrimitive(ft).isInstance(value)) {
-            f.set(obj, value);
         } else {
-            String lname = LuaMesh.getLuaName(ft);
-            if(lname.equals("<unknown type>")) {
-                lname = "<uncoercible Java type " + ft.getName() + "; report this to developer>";
-            }
+            try {
+                f.set(obj, value);
+            } catch(IllegalArgumentException e) {
+                String lname = LuaMesh.getLuaName(ft);
+                if(lname.equals("<unknown type>")) {
+                    lname = "<uncoercible Java type " + ft.getName() + "; report this to developer>";
+                }
 
-            throw new LuaError("invalid value for Java field; expected " + lname);
+                throw new LuaError("invalid value for Java field; expected " + lname);
+            }
         }
     }
-
 
 }
