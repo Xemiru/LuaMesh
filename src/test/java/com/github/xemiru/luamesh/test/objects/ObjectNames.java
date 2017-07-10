@@ -21,20 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.github.xemiru.luamesh.test;
+package com.github.xemiru.luamesh.test.objects;
+
+import static com.github.xemiru.luamesh.test.Utility.println;
 
 import com.github.xemiru.luamesh.LuaType;
 
-@LuaType(name = "libB")
-public class LibraryB extends LibraryA {
+/**
+ * Set up to test name overrides.
+ */
+@LuaType(name = "luanames")
+public class ObjectNames {
 
-    static void println(String str) {
-        System.out.println(str);
+    @LuaType(name = "fielda") private int a = 4;
+    @LuaType(name = "fieldb") private int b = 12;
+
+    @LuaType(name = "methoda")
+    public void a() {
+        println("Method A!");
     }
 
-    @Override
-    @LuaType(name = "voidmethod")
-    public void voidMethod() {
-        println("LibraryB overrides void method.");
+    @LuaType
+    public void fieldb() {
+        println("I'm not even a field.");
     }
+
 }

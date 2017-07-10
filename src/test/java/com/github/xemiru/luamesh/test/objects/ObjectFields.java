@@ -21,27 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.github.xemiru.luamesh.test;
+package com.github.xemiru.luamesh.test.objects;
+
+import com.github.xemiru.luamesh.LuaType;
 
 /**
- * Unannotated, one-way test class.
+ * Set up to test fields.
  */
-public class TestC {
+@LuaType
+public class ObjectFields {
 
-    static void println(String str) { System.out.println(str); }
+    // test all primitives and generic object
+    @LuaType public boolean bool = false;
+    @LuaType public byte bytee = 0x00;
+    @LuaType public char charr = '1';
+    @LuaType public short shortt = (short) 4;
+    @LuaType public int intt = 12;
+    @LuaType public long longg = 69;
+    @LuaType public double doublee = 12.4;
+    @LuaType public float floatt = 12.6F;
+    @LuaType public Object obj = new Object();
 
-    public void printStuff() { println("stuff"); }
-
-    public int add(int a, int b) {
-        println("add method called.");
-        return a + b;
-    }
-
-    public boolean filteredJava() {
-        println("filteredJava method called.");
-        return false;
-    }
-
-    public void removed() {}
+    // field will disappear; method takes priority
+    @LuaType public int poopy = 124;
+    @LuaType public void poopy() {}
 
 }

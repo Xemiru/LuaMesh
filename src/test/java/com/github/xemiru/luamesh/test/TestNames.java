@@ -23,23 +23,43 @@
  */
 package com.github.xemiru.luamesh.test;
 
-import com.github.xemiru.luamesh.LuaType;
+import com.github.xemiru.luamesh.LuaObjectValue;
+import com.github.xemiru.luamesh.LuaUtil;
+import com.github.xemiru.luamesh.test.objects.ObjectNames;
+import org.junit.Before;
+import org.junit.Test;
+import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaValue;
 
-@LuaType(name = "TestBB")
-public class TestB extends TestA {
+import static com.github.xemiru.luamesh.LuaObjectValue.of;
+import static com.github.xemiru.luamesh.test.Utility.init;
+import static org.junit.Assert.*;
+import static org.luaj.vm2.LuaValue.NIL;
 
-    public static void println(String msg) {
-        System.out.println(msg);
+public class TestNames {
+
+    private Globals g;
+
+    @Before
+    public void before() {
+        this.g = init();
+
+        this.g.set("obj", of(new ObjectNames()));
     }
 
-    // test method name changes
-    // because edge cases, i guess
+    @Test
+    public void names() {
+        LuaValue obj = g.get("obj");
 
-    @Override
-    @LuaType(name = "luaintMethod")
-    public int intMethod() {
-        println("Overriden int method returns 1.");
-        return 1;
+        assertEquals("luanames", g.get("ctype").call(obj).checkjstring());
+        assertEquals(NIL, obj.get("a"));
+        assertNotEquals(NIL, obj.get("fielda"));
+
+        assertEquals(NIL, obj.get("b"));
+        assertNotEquals(NIL, obj.get("fieldb"));
+
+        assertTrue(obj.get("fieldb").isfunction());
+        assertTrue(obj.get("methoda").isfunction());
     }
 
 }

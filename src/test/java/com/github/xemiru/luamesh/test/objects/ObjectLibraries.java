@@ -21,27 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.github.xemiru.luamesh.test;
+package com.github.xemiru.luamesh.test.objects;
 
-import com.github.xemiru.luamesh.LuaLibrary;
+import static com.github.xemiru.luamesh.test.Utility.println;
+
 import com.github.xemiru.luamesh.LuaType;
 
 @LuaType
-public class LibraryA extends LuaLibrary {
+public class ObjectLibraries {
 
-    static void println(String str) {
-        System.out.println(str);
-    }
-
-    @LuaType
-    public void voidMethod() {
-        println("Library method is void.");
-    }
+    // We don't really need to test anything other than whether or not
+    // we need to pass the owning object to any of these methods in Lua.
+    // Fields' behavior don't change.
 
     @LuaType
-    public int intMethod() {
-        println("Library method returns 3.");
-        return 3;
+    public Object objMethod(Object obj) {
+        println("Object method returns the given object back.");
+        return obj;
     }
 
 }

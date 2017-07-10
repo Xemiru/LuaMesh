@@ -23,52 +23,31 @@
  */
 package com.github.xemiru.luamesh.test;
 
-import com.github.xemiru.luamesh.LuaType;
-import com.github.xemiru.luamesh.LuaType.MetaEntry;
+import com.github.xemiru.luamesh.test.objects.ObjectLibraries;
+import org.junit.Before;
+import org.junit.Test;
+import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaValue;
 
-@LuaType
-public class TestA {
+import static com.github.xemiru.luamesh.LuaObjectValue.of;
+import static com.github.xemiru.luamesh.test.Utility.init;
+import static org.junit.Assert.assertEquals;
 
-    static void println(String msg) {
-        System.out.println(msg);
+public class TestLibraries {
+
+    private Globals g;
+
+    @Before
+    public void before() {
+        this.g = init();
+        this.g.set("lib", of(new ObjectLibraries()).toLibrary());
     }
 
-    // =========================================
-    // method test
-
-    @LuaType
-    public int intMethod() {
-        println("Integer method returns 0.");
-        return 0;
-    }
-
-    @LuaType
-    public void voidMethod() {
-        println("Void method does nothing.");
-    }
-
-    @LuaType
-    public Object objMethod(Object obj) {
-        return obj;
-    }
-
-    // =========================================
-    // type annot tests
-
-    @LuaType(abstractt = true)
-    public boolean abstractMethod() {
-        println("This shouldn't be printed out.");
-        return true;
-    }
-
-    @LuaType(entry = MetaEntry.ADD)
-    public TestA add(TestA b) {
-        println("Addition method returns the second object.");
-        return b;
-    }
-
-    public void notInLua() {
-        println("This shouldn't be printed out from Lua.");
+    @Test
+    public void libraries() {
+        LuaValue lib = this.g.get("lib");
+        LuaValue obj = of(new Object());
+        assertEquals(obj, lib.get("objMethod").call(obj));
     }
 
 }
