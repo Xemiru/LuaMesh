@@ -210,6 +210,11 @@ public class LuaMeta {
             LuaType typeAnnot = method.getDeclaredAnnotation(LuaType.class);
 
             if (typeAnnot != null) {
+                if(method.getReturnType().isArray()) {
+                    // arrays not allowed
+                    throw new InvalidCoercionTargetException("Cannot bind method returning array type");
+                }
+
                 String mName = method.getName();
 
                 // apply the name override if its there
@@ -255,6 +260,11 @@ public class LuaMeta {
         for (Field field : type.getDeclaredFields()) {
             LuaType typeAnnot = field.getDeclaredAnnotation(LuaType.class);
             if(typeAnnot != null) {
+                if(field.getType().isArray()) {
+                    // arrays not allowed
+                    throw new InvalidCoercionTargetException("Cannot bind field holding array type");
+                }
+
                 field.setAccessible(true); // for later
                 String fName = field.getName();
 
