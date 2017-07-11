@@ -301,12 +301,7 @@ public class LuaObjectValue<T> extends LuaTable {
             try {
                 f.set(obj, value);
             } catch(IllegalArgumentException e) {
-                String lname = LuaMesh.getLuaName(ft);
-                if(lname.equals("<unknown type>")) {
-                    lname = "<uncoercible Java type " + ft.getName() + "; report this to developer>";
-                }
-
-                throw new LuaError("invalid value for Java field; expected " + lname);
+                throw new LuaError("invalid value for Java field; expected " + LuaMesh.getLuaName(ft));
             }
         }
     }

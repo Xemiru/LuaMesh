@@ -23,11 +23,7 @@
  */
 package com.github.xemiru.luamesh;
 
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Type;
+import org.objectweb.asm.*;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -52,10 +48,12 @@ public class MeshTransformer extends ClassVisitor {
     public static class AnnotationHarvester extends AnnotationVisitor {
 
         public boolean abstractt;
+        public boolean unidirectional;
 
         public AnnotationHarvester(AnnotationVisitor av) {
             super(ASM5, av);
             this.abstractt = false;
+            this.unidirectional = false;
         }
 
         @Override
@@ -63,6 +61,10 @@ public class MeshTransformer extends ClassVisitor {
             super.visit(name, value);
             if (name.equals("abstractt")) {
                 this.abstractt = (boolean) value;
+            }
+
+            if (name.equals("target")) {
+                unidirectional = !value.equals(Object.class);
             }
         }
     }
@@ -360,12 +362,36 @@ public class MeshTransformer extends ClassVisitor {
     }
 
     private String cname;
-    private boolean lua;
+    private boolean warned;
+    private AnnotationHarvester av;
 
     public MeshTransformer(ClassVisitor cv) {
         super(ASM5, cv);
+        this.warned = false;
         this.cname = null;
-        this.lua = false;
+        this.av = null;
+    }
+
+    private boolean checkAnnot() {
+        if (this.av == null) {
+            // not lua annotated?
+            //   _____  _____ _____  ______          __  __
+            //  / ____|/ ____|  __ \|  ____|   /\   |  \/  |
+            // | (___ | |    | |__) | |__     /  \  | \  / |
+            //  \___ \| |    |  _  /|  __|   / /\ \ | |\/| |
+            //  ____) | |____| | \ \| |____ / ____ \| |  | |
+            // |_____/ \_____|_|  \_\______/_/    \_\_|  |_|
+
+            throw new InvalidCoercionTargetException(
+                    "class " + cname + " cannot be transformed: not annotated with LuaType");
+        }
+
+        if(this.av.unidirectional && !warned) {
+            warned = true;
+            LuaMesh.debug("skipping injections in unidirectional delegate class " + cname);
+        }
+
+        return this.av.unidirectional;
     }
 
     @Override
@@ -378,35 +404,31 @@ public class MeshTransformer extends ClassVisitor {
 
     @Override
     public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+        AnnotationVisitor av = super.visitAnnotation(desc, visible);
         if (desc.equals(Type.getDescriptor(LuaType.class))) {
             // make sure we know if we're lua-annotated
-            this.lua = true;
+            this.av = new AnnotationHarvester(av);
+            return this.av;
         }
 
-        return super.visitAnnotation(desc, visible);
+
+        return av;
+    }
+
+    @Override
+    public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
+        checkAnnot(); // we want to fail fast on any LuaType annotation
+        return super.visitField(access, name, desc, signature, value);
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature,
                                      String[] exceptions) {
         // transform our methods
-        return new MethodTransformer(this.cv, cname, access, name, desc, signature, exceptions);
-    }
-
-    @Override
-    public void visitEnd() {
-        super.visitEnd();
-        if (!this.lua) {
-            // not lua annotated?
-            //   _____  _____ _____  ______          __  __ 
-            //  / ____|/ ____|  __ \|  ____|   /\   |  \/  |
-            // | (___ | |    | |__) | |__     /  \  | \  / |
-            //  \___ \| |    |  _  /|  __|   / /\ \ | |\/| |
-            //  ____) | |____| | \ \| |____ / ____ \| |  | |
-            // |_____/ \_____|_|  \_\______/_/    \_\_|  |_|
-
-            throw new InvalidCoercionTargetException(
-                    "class " + cname + " cannot be transformed: not annotated with LuaType");
+        if(checkAnnot()) {
+            return super.visitMethod(access, name, desc, signature, exceptions);
+        } else { // only if they're bi-directional
+            return new MethodTransformer(this.cv, cname, access, name, desc, signature, exceptions);
         }
     }
 }

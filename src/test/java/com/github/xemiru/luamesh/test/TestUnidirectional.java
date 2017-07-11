@@ -32,6 +32,7 @@ import static org.luaj.vm2.LuaValue.valueOf;
 
 import com.github.xemiru.luamesh.LuaObjectValue;
 import com.github.xemiru.luamesh.test.objects.UnidirectionalTarget;
+import com.github.xemiru.luamesh.test.objects.UnidirectionalTargetB;
 import org.junit.Before;
 import org.junit.Test;
 import org.luaj.vm2.Globals;
@@ -46,6 +47,7 @@ public class TestUnidirectional {
         this.g = init();
 
         this.g.set("obj", of(new UnidirectionalTarget()));
+        this.g.set("objb", of(new UnidirectionalTargetB()));
     }
 
     @Test
@@ -63,5 +65,25 @@ public class TestUnidirectional {
         // make sure it doesn't care about the lua function changes
         assertEquals(5, ut.add(2, 3));
         assertEquals(ut, ut.giveStuff());
+    }
+
+    @Test
+    public void unidirectionalB() {
+        LuaValue obj = this.g.get("objb");
+        UnidirectionalTargetB ut = ((LuaObjectValue<UnidirectionalTargetB>) obj).getObject();
+
+        obj.get("doStuff").call(obj);
+        assertEquals(5, obj.get("add").call(obj, valueOf(2), valueOf(3)).checkint());
+        assertEquals(obj, obj.get("giveStuff").call(obj));
+
+        obj.set("add", func(args -> valueOf(args.checkint(1) * args.checkint(2))));
+        obj.set("giveStuff", func(args -> NIL));
+
+        // make sure it doesn't care about the lua function changes
+        assertEquals(5, ut.add(2, 3));
+        assertEquals(ut, ut.giveStuff());
+
+        // check for new metaentry added by delegate
+        assertEquals(obj, obj.add(obj));
     }
 }

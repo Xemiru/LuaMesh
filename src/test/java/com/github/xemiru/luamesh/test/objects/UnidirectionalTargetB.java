@@ -28,9 +28,9 @@ import static com.github.xemiru.luamesh.test.Utility.println;
 /**
  * Dummy class target for unidirectional bindings.
  */
-public class UnidirectionalTarget {
+public class UnidirectionalTargetB {
 
-    public UnidirectionalTarget() {
+    public UnidirectionalTargetB() {
         doThings();
     }
 

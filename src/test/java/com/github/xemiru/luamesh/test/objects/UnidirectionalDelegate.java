@@ -23,26 +23,22 @@
  */
 package com.github.xemiru.luamesh.test.objects;
 
+import com.github.xemiru.luamesh.LuaType;
+import com.github.xemiru.luamesh.LuaType.MetaEntry;
+
 import static com.github.xemiru.luamesh.test.Utility.println;
 
-/**
- * Dummy class target for unidirectional bindings.
- */
-public class UnidirectionalTarget {
+@LuaType(target = UnidirectionalTargetB.class)
+public class UnidirectionalDelegate {
 
-    public UnidirectionalTarget() {
-        doThings();
+    @LuaType(entry = MetaEntry.ADD)
+    public UnidirectionalTargetB l_add(UnidirectionalTargetB self, UnidirectionalTargetB other) {
+        println("Delegate add metamethod was called.");
+        return other;
     }
 
-    public void doThings() {
-        println("Void method does nothing.");
-    }
+    @LuaType(name = "doStuff") public void doThings() {}
+    @LuaType public int add(int a, int b) { return 0; } // impl doesn't matter
+    @LuaType public Object giveStuff() { return this; }
 
-    public int add(int a, int b) {
-        return a + b;
-    }
-
-    public Object giveStuff() {
-        return this;
-    }
 }

@@ -50,6 +50,7 @@ public class Utility {
             register("ObjectLibraries");
             register("ObjectMethods");
             register("ObjectNames");
+            register("UnidirectionalDelegate");
             LuaMesh.register(UnidirectionalTarget.class, name -> {
                 switch(name) {
                     case "doThings": return "doStuff";
