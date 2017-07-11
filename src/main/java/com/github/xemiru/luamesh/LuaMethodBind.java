@@ -51,8 +51,12 @@ public class LuaMethodBind extends VarArgFunction implements Cloneable {
             String[] msg = ex.getMessage().split(" ");
             String given = msg[2];
             String expected = msg[4];
+            String lex = LuaMesh.getLuaName(expected);
+            if(lex.equals("<unknown type>")) {
+                lex = "<uncoercible Java type " + expected + ">";
+            }
 
-            return String.format("bad argument: %s expected, got %s", LuaMesh.getLuaName(expected),
+            return String.format("bad argument: %s expected, got %s", lex,
                     LuaMesh.getLuaName(given));
         }
 
@@ -64,6 +68,7 @@ public class LuaMethodBind extends VarArgFunction implements Cloneable {
     private boolean[] numtypes;
     private int paramCount;
     private boolean staticc;
+    protected Object dinstance;
     protected Object instance;
 
     private LuaMethodBind() {
@@ -90,13 +95,27 @@ public class LuaMethodBind extends VarArgFunction implements Cloneable {
     public Varargs invoke(Object obj, Varargs args) {
         // gather parameters
         Object[] params = new Object[staticc ? paramCount : paramCount + 1];
+        int offset = 0;
         for (int i = 0; i < params.length; i++) {
-            if (!staticc && i == 0 && obj != null) {
-                params[0] = obj;
-                continue;
+            if(dinstance == null) {
+                if (!staticc && i == 0 && obj != null) {
+                    params[0] = obj;
+                    continue;
+                }
+            } else {
+                if (!staticc && i == 0) {
+                    params[0] = dinstance;
+                    offset -= 1;
+                    continue;
+                }
+
+                if (!staticc && i == 1 && obj != null) {
+                    params[1] = obj;
+                    continue;
+                }
             }
 
-            LuaValue v = args.arg(obj == null || staticc ? i + 1 : i);
+            LuaValue v = args.arg((obj == null || staticc ? i + 1 : i) + offset);
             if (v.isnil()) {
                 params[i] = null;
             } else {

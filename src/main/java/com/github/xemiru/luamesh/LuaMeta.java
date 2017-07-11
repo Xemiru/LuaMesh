@@ -28,6 +28,7 @@ import static com.github.xemiru.luamesh.LuaMesh.debug;
 import com.github.xemiru.luamesh.LuaType.MetaEntry;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
+import org.omg.CORBA.DynAnyPackage.Invalid;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -181,36 +182,58 @@ public class LuaMeta {
         }
     }
 
-    private String getKey(String value) {
-        for(String key : this.names.keySet()) {
-            if(this.names.get(key).equals(value)) return key;
-        }
-
-        return null;
-    }
-
     /**
-     * Constructor generating two-way metadata based on
+     * Constructor generating metadata based on
      * {@link LuaType} annotations found within the given
      * type's class.
      *
      * @param rannot the annotation of the class
+     * @param delegate the class representing `type`, if
+     *        unidirectional
      * @param type the class to create metadata with
      */
-    LuaMeta(LuaType rannot, Class<?> type) {
+    LuaMeta(LuaType rannot, Class<?> delegate, Class<?> type) {
         this(type, convertClassName(type, (
-                type.getDeclaredAnnotation(LuaType.class) != null
-                ? type.getDeclaredAnnotation(LuaType.class)
-                : rannot).name()));
+                delegate.getDeclaredAnnotation(LuaType.class) != null
+                        ? delegate.getDeclaredAnnotation(LuaType.class)
+                        : rannot).name()));
+
+        // safecheck the delegate
+        Object dinstance = null;
+        if (delegate != type) {
+            try {
+                dinstance = delegate.getDeclaredConstructor().newInstance();
+            } catch(Exception e) {
+                InvalidCoercionTargetException thrown =
+                        new InvalidCoercionTargetException(String.format("delegate class %s does not have empty constructor", delegate.getName()));
+                thrown.initCause(e);
+                throw thrown;
+            }
+        }
 
         // register annotated methods and fields
         LuaValue __index = this.metatable.get(LuaValue.INDEX);
 
-        for (Method method : type.getDeclaredMethods()) {
-            LuaType typeAnnot = method.getDeclaredAnnotation(LuaType.class);
+        for (Method dmethod : delegate.getDeclaredMethods()) {
+            LuaType typeAnnot = dmethod.getDeclaredAnnotation(LuaType.class);
+            boolean delMethod = false;
+            Method method;
+
+            try {
+                method = type.getDeclaredMethod(dmethod.getName(), dmethod.getParameterTypes());
+            } catch (NoSuchMethodException whoCares) {
+                method = dmethod;
+                delMethod = true;
+
+                if(dmethod.getParameterTypes().length < 1 || dmethod.getParameterTypes()[0] != type) {
+                    throw new InvalidCoercionTargetException("Delegate methods must have a self-reference as the first parameter");
+                }
+
+                debug(String.format("delegate class %s is registering its own method %s for target class %s", delegate.getName(), dmethod.getName(), type.getName()));
+            }
 
             if (typeAnnot != null) {
-                if(method.getReturnType().isArray()) {
+                if (method.getReturnType().isArray()) {
                     // arrays not allowed
                     throw new InvalidCoercionTargetException("Cannot bind method returning array type");
                 }
@@ -241,6 +264,7 @@ public class LuaMeta {
                     // register
                     method.setAccessible(true);
                     LuaMethodBind lfunc = new LuaMethodBind(method);
+                    if(delMethod) lfunc.dinstance = dinstance;
 
                     if (typeAnnot.entry() != MetaEntry.INDEX) {
                         this.metatable.set(typeAnnot.entry().getKey(), lfunc);
@@ -257,10 +281,18 @@ public class LuaMeta {
             }
         }
 
-        for (Field field : type.getDeclaredFields()) {
-            LuaType typeAnnot = field.getDeclaredAnnotation(LuaType.class);
-            if(typeAnnot != null) {
-                if(field.getType().isArray()) {
+        for (Field dfield : delegate.getDeclaredFields()) {
+            LuaType typeAnnot = dfield.getDeclaredAnnotation(LuaType.class);
+            Field field;
+
+            try {
+                field = type.getDeclaredField(dfield.getName());
+            } catch (NoSuchFieldException whoCares) {
+                throw new InvalidCoercionTargetException("Delegate classes cannot bind fields");
+            }
+
+            if (typeAnnot != null) {
+                if (field.getType().isArray()) {
                     // arrays not allowed
                     throw new InvalidCoercionTargetException("Cannot bind field holding array type");
                 }
@@ -272,19 +304,19 @@ public class LuaMeta {
                 String aName = typeAnnot.name().trim();
 
                 // check for override
-                if(!aName.isEmpty() || !this.names.containsKey(fName)) {
+                if (!aName.isEmpty() || !this.names.containsKey(fName)) {
                     aName = convertMemberName(field, aName);
                 }
 
                 // in case of override
-                if(this.names.containsValue(aName)) {
-                    if(!this.fields.containsKey(aName)) {
+                if (this.names.containsValue(aName)) {
+                    if (!this.fields.containsKey(aName)) {
                         debug(String.format("field %s in class %s was not linked in favor of existing method of the same Lua name",
                                 aName, type.getName()));
                         continue; // don't replace a method
                     }
 
-                    if(typeAnnot.entry() != MetaEntry.INDEX) {
+                    if (typeAnnot.entry() != MetaEntry.INDEX) {
                         this.metatable.set(typeAnnot.entry().getKey(), LuaValue.NIL);
                         this.meta.remove(getKey(aName));
                         this.names.remove(getKey(aName));
@@ -326,15 +358,17 @@ public class LuaMeta {
 
         // register methods
         LuaValue __index = this.metatable.get(LuaValue.INDEX);
-        for(Method method : type.getDeclaredMethods()) {
+        for (Method method : type.getDeclaredMethods()) {
             String mname = convertMemberName(method, null);
             String name = filter == null ? mname : filter.apply(mname);
-            if(name == null) { continue; }
+            if (name == null) {
+                continue;
+            }
 
             try {
                 method.setAccessible(true);
                 __index.set(name, new LuaMethodBind(method));
-            } catch(IllegalAccessException e) {
+            } catch (IllegalAccessException e) {
                 // let it cause a crash, this isn't good
                 throw new RuntimeException(e);
             }
@@ -398,6 +432,48 @@ public class LuaMeta {
      */
     public String getLuaName(String memberName) {
         return this.names.get(memberName);
+    }
+
+    //
+    // private utility
+    //
+
+    private String getKey(String value) {
+        for (String key : this.names.keySet()) {
+            if (this.names.get(key).equals(value)) return key;
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks whether or not two methods are similar to
+     * each other.
+     *
+     * <p>Similar to {@link Method#equals(Object)}, without
+     * checking if both have the same declaring class.</p>
+     *
+     * @param a a method
+     * @param b another method
+     *
+     * @return whether `a` and `b` are similar
+     */
+    private boolean methodsEqual(Method a, Method b) {
+        if (a.getName().equals(b.getName())
+                && a.getReturnType().equals(b.getReturnType())) {
+            Class<?>[] params1 = a.getParameterTypes();
+            Class<?>[] params2 = a.getParameterTypes();
+
+            if (params1.length == params2.length) {
+                for (int i = 0; i < params1.length; i++) {
+                    if (params1[i] != params2[i]) return false;
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

@@ -111,9 +111,18 @@ public class LuaMesh {
         }
 
         LuaType typeAnnot = clazz.getAnnotation(LuaType.class);
-        LuaMeta meta = typeAnnot == null ? new LuaMeta(clazz, filter) : new LuaMeta(typeAnnot, clazz);
-        metas.put(clazz, meta);
-        names.put(clazz.getName(), meta.getName());
+        Class<?> target = clazz;
+        LuaMeta meta;
+
+        if(typeAnnot != null) {
+            target = typeAnnot.target() == Object.class ? target : typeAnnot.target();
+            meta = new LuaMeta(typeAnnot, clazz, target);
+        } else {
+            meta = new LuaMeta(clazz, filter);
+        }
+
+        metas.put(target, meta);
+        names.put(target.getName(), meta.getName());
         return meta;
     }
 
@@ -338,7 +347,7 @@ public class LuaMesh {
         }
 
         String n = names.get(name);
-        return n == null ? "<unknown type>" : n;
+        return n == null ? "<uncoercible Java type " + name + ">" : n;
     }
 
     /**

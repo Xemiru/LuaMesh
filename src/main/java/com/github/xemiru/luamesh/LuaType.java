@@ -106,4 +106,18 @@ public @interface LuaType {
      */
     MetaEntry entry() default MetaEntry.INDEX;
 
+    /**
+     * Sets whether this class represents a unidirectional
+     * binding for the given target class.
+     *
+     * <p>If this is set to {@link java.lang.Object}, it is
+     * considered a bi-directional binding representing
+     * itself.</p>
+     *
+     * @return the target Class to represent for a
+     *         unidirectional binding, or java.lang.Object to
+     *         represent itself as a bidirectional binding
+     */
+    Class<?> target() default Object.class;
+
 }
